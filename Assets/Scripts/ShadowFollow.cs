@@ -3,11 +3,16 @@ using UnityEngine.Rendering.Universal;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(DecalProjector))]
-[DefaultExecutionOrder(101)]
+[DefaultExecutionOrder(102)]
 public class ShadowFollow : MonoBehaviour
 {
     [Header("Selection")]
     [SerializeField] private ObjectGizmoController gizmoController;
+
+    [SerializeField] private GhostGroundLine groundLine;
+    [SerializeField] private LayerMask groundLayers = ~0;
+    [SerializeField] private float rayDistance = 100f;
+    [Min(.001f)][SerializeField] private float projectionDepth = .02f;
 
     [Header("Shadow Settings")]
     [SerializeField] private float verticalOffset = 0f;
@@ -27,14 +32,17 @@ public class ShadowFollow : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (!gizmoController) gizmoController = FindAnyObjectByType<ObjectGizmoController>();
+        if (!groundLine) groundLine = FindAnyObjectByType<GhostGroundLine>();
         Rigidbody selected = gizmoController != null
             ? gizmoController.SelectedObject
             : null;
 
-        if (selected == null)
+        Transform preview = gizmoController != null ? gizmoController.PreviewTransform : null;
+        if (selected == null || preview == null)
         {
             projector.enabled = false;
-            currentTarget = null;
+            if (!selected || !preview) currentTarget = null;
             return;
         }
 
@@ -45,16 +53,16 @@ public class ShadowFollow : MonoBehaviour
             CalculateShadowSize(selected);
         }
 
-        Vector3 center = selected.transform.TransformPoint(localCenter);
-
-        transform.SetPositionAndRotation(
-            new Vector3(
-                center.x,
-                selected.position.y + verticalOffset,
-                center.z
-            ),
-            Quaternion.Euler(90f, 0f, 0f)
-        );
+        Vector3 start;
+        RaycastHit hit;
+        bool found = groundLine && groundLine.isActiveAndEnabled
+            ? groundLine.TryGround(preview, selected, out start, out hit)
+            : GhostGroundLine.TryGround(preview, selected, groundLayers, rayDistance, out start, out hit);
+        if (!found) { projector.enabled = false; return; }
+        float depth = Mathf.Clamp(projectionDepth, .001f, .05f);
+        projector.size = new Vector3(projector.size.x, projector.size.y, depth);
+        projector.pivot = Vector3.zero;
+        transform.SetPositionAndRotation(hit.point + hit.normal * verticalOffset, Quaternion.LookRotation(-hit.normal, Vector3.forward));
 
         projector.enabled = true;
     }
