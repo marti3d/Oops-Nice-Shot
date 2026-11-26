@@ -33,11 +33,11 @@ Material:
     - _InnerRadius: 0.16
     - _OccludedOpacity: 0.1
     - _Opacity: 1
-    - _OuterRadius: 0.39
-    - _Pulse: 0.2
+    - _OuterRadius: 0.35
+    - _Pulse: 0.1
     - _Ring: 0
     - _Softness: 0.005
-    - _Speed: 1.5
+    - _Speed: 1.2
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _PlacementTint: {r: 1, g: 1, b: 1, a: 1}

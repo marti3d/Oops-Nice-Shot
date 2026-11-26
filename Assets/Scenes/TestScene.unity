@@ -362,17 +362,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlacementIndicator
   gizmoController: {fileID: 1985421925}
+  targetCamera: {fileID: 1985421919}
   indicatorMaterial: {fileID: 2100000, guid: 46a4175c016b6994e8b6e2879104591c, type: 2}
-  sizeMode: 1
-  alignToSurface: 1
   usePlacementColor: 1
   alwaysOnTop: 0
+  alignToSurface: 1
+  surfaceOffset: 0.025
+  sizeMode: 1
   indicatorSize: 3
   sizeMultiplier: 1.15
   minimumSize: 0.2
   maximumSize: 10
-  surfaceOffset: 0.025
-  targetCamera: {fileID: 1985421919}
   screenPixels: 80
 --- !u!1 &272026817
 GameObject:
@@ -1181,14 +1181,16 @@ MonoBehaviour:
   gizmoController: {fileID: 1985421925}
   targetCamera: {fileID: 1985421919}
   lineMaterial: {fileID: 2100000, guid: 0cd12366fbc47934f916fe29159c04cd, type: 2}
-  lineColor: {r: 1, g: 1, b: 0.8156863, a: 1}
   usePlacementColor: 1
-  adaptiveWidth: 1
-  dashed: 1
+  lineColor: {r: 1, g: 1, b: 0.8156863, a: 1}
   opacity: 0.8
+  overlayShader: {fileID: 4800000, guid: d13e1ca93bf3fa34fa4176a57e80d00d, type: 3}
+  alwaysVisible: 1
   width: 0.025
-  dashLength: 0.2
+  adaptiveWidth: 1
   minimumPixels: 2
+  dashed: 1
+  dashLength: 0.8
 --- !u!120 &1292842058
 LineRenderer:
   serializedVersion: 3
@@ -1947,9 +1949,9 @@ GameObject:
   - component: {fileID: 1985421918}
   - component: {fileID: 1985421917}
   - component: {fileID: 1985421923}
+  - component: {fileID: 1985421925}
   - component: {fileID: 1985421921}
   - component: {fileID: 1985421924}
-  - component: {fileID: 1985421925}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -2160,64 +2162,78 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d4306d11af0ba541b7d5e2842bda74a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectGizmoController
+  targetCamera: {fileID: 1985421919}
+  cameraController: {fileID: 1985421923}
+  gizmoShader: {fileID: 4800000, guid: 2aafb0439669118459622628f2c704f7, type: 3}
+  outlineMaterial: {fileID: 2100000, guid: a6d4131871226814d869c0de727dd846, type: 2}
   selectableLayers:
     serializedVersion: 2
     m_Bits: 64
-  targetCamera: {fileID: 1985421919}
-  cameraController: {fileID: 1985421923}
   selectionRayLayers:
     serializedVersion: 2
     m_Bits: 64
-  outlineMaterial: {fileID: 2100000, guid: a6d4131871226814d869c0de727dd846, type: 2}
-  gizmoShader: {fileID: 4800000, guid: 2aafb0439669118459622628f2c704f7, type: 3}
-  gizmoWorldSize: 1
-  autoSizeGizmo: 0
-  minimumGizmoSize: 0.25
   moveKey: 37
   rotateKey: 19
   spaceKey: 31
   rotationTool: 0
   localSpace: 0
-  limitScreenSize: 1
   sizeMode: 0
-  constantScreenPixels: 85
-  referenceObjectSize: 1
-  planeSizeMultiplier: 1.4
-  planeBorder: 0.035
-  facePlanesTowardsCamera: 1
-  fullRingWhileDragging: 1
+  gizmoWorldSize: 1
+  autoSizeGizmo: 0
+  minimumGizmoSize: 0.25
+  limitScreenSize: 1
   minimumGizmoPixels: 60
   maximumGizmoPixels: 120
-  idleOpacity: 0.55
-  inactiveOpacity: 0.1
-  fadeDuration: 0.12
-  hoverScale: 1.1
-  arcDegrees: 180
-  planeOffset: 0.15
-  planeSize: 0.3
-  showReadout: 1
-  showToolLabel: 0
-  showSpaceLabel: 0
-  showMovementDistance: 0
-  showRotationAngle: 0
-  showSnapIndicator: 0
-  showMove: 1
-  showRotate: 1
-  arrowLength: 1.5
-  arrowShaftThickness: 0.02
-  arrowHeadWidth: 0.075
-  arrowHeadLength: 0.22
-  ringRadius: 1
-  ringThickness: 0.025
-  ringSegments: 96
+  constantScreenPixels: 85
+  referenceObjectSize: 1
   xColor: {r: 0.95, g: 0.2, b: 0.2, a: 1}
   yColor: {r: 0.3, g: 0.9, b: 0.25, a: 1}
   zColor: {r: 0.25, g: 0.45, b: 1, a: 1}
   hoverColor: {r: 1, g: 1, b: 0, a: 1}
   activeColor: {r: 1, g: 1, b: 0.78431374, a: 1}
   gizmoOpacity: 1
+  idleOpacity: 0.7
+  inactiveOpacity: 0.1
+  fadeDuration: 0.12
+  hoverScale: 1.1
+  showMove: 1
+  arrowLength: 1.25
+  arrowShaftThickness: 0.02
+  arrowHeadWidth: 0.075
+  arrowHeadLength: 0.22
   arrowHitRadiusPixels: 14
+  showRotate: 1
+  ringRadius: 1
+  ringThickness: 0.025
+  ringSegments: 96
+  arcDegrees: 180
+  fullRingWhileDragging: 1
   ringHitRadiusPixels: 8
+  brushWobble: 0.01
+  brushWidthVariation: 0.3
+  brushHoverTint: 0.1
+  arrowCurvature: 0.065
+  animateArrows: 1
+  arrowWaveAmplitude: 0.02
+  arrowWaveSpeed: 0.5
+  arrowWaveCount: 1.5
+  rotateCurvature: 0.035
+  animateRotationArrows: 1
+  rotateWaveAmplitude: 0.02
+  rotateWaveSpeed: 0.5
+  rotateWaveCount: 5
+  planeOffset: 0.15
+  planeSize: 0.3
+  planeSizeMultiplier: 1.4
+  facePlanesTowardsCamera: 1
+  planeCornerRoundness: 0.35
+  planeBrushRoughness: 0.018
+  planeBorder: 0.08
+  planeEdgeOpacity: 1
+  planeFillOpacity: 0.7
+  animatePlaneHandles: 1
+  planeWaveAmplitude: 0.03
+  planeWaveSpeed: 0.5
   adaptiveGizmoThickness: 1
   minimumArrowPixels: 3
   minimumHeadPixels: 9
@@ -2228,21 +2244,18 @@ MonoBehaviour:
   rotationSensitivity: 1
   moveSnap: 0.5
   rotationSnap: 15
+  showReadout: 1
+  showToolLabel: 0
+  showSpaceLabel: 0
+  showMovementDistance: 0
+  showRotationAngle: 0
+  showSnapIndicator: 0
   pickupLiftHeight: 5
   pickupLiftDuration: 0.25
   obstacleLayers:
     serializedVersion: 2
     m_Bits: 4294967295
   collisionClearance: 0.005
-  ghostShader: {fileID: 4800000, guid: d80d113d96590fc4b8026d7b930fd18f, type: 3}
-  validColor: {r: 1, g: 1, b: 0.5254902, a: 1}
-  invalidColor: {r: 1, g: 0, b: 0, a: 1}
-  noGroundColor: {r: 0.9613941, g: 0.43867922, b: 1, a: 1}
-  ghostOpacity: 0.35
-  transferSpeed: 25
-  releaseDelay: 0.5
-  rejectDuration: 0.25
-  rejectShake: 0.06
   groundLayers:
     serializedVersion: 2
     m_Bits: 72
@@ -2250,6 +2263,15 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 16
   groundDistance: 100
+  ghostShader: {fileID: 4800000, guid: d80d113d96590fc4b8026d7b930fd18f, type: 3}
+  ghostOpacity: 0.35
+  validColor: {r: 1, g: 1, b: 0.5254902, a: 1}
+  invalidColor: {r: 1, g: 0, b: 0, a: 1}
+  noGroundColor: {r: 0.9613941, g: 0.43867922, b: 1, a: 1}
+  rejectDuration: 0.25
+  rejectShake: 0.06
+  transferSpeed: 25
+  releaseDelay: 0.5
 --- !u!1 &2028287032
 GameObject:
   m_ObjectHideFlags: 0

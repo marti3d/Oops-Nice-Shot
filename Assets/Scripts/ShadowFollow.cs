@@ -6,21 +6,28 @@ using UnityEngine.Rendering.Universal;
 [DefaultExecutionOrder(102)]
 public class ShadowFollow : MonoBehaviour
 {
-    [Header("Selection")]
+    [Header("Scene References")]
+    [Tooltip("Controller that supplies the ghost preview and ground hit. If empty, finds one in the scene.")]
     [SerializeField]
     private ObjectGizmoController gizmoController;
 
+    [Header("Surface Projection")]
+    [Tooltip("Depth of the decal projector. At runtime it is clamped between 0.001 and 0.05 world units.")]
     [Min(.001f)]
     [SerializeField]
     private float projectionDepth = .02f;
-
-    [Header("Shadow Settings")]
+    [Tooltip("Offset the shadow along the ground normal, in world units.")]
     [SerializeField]
     private float verticalOffset = 0f;
+
+    [Header("Shadow Footprint")]
+    [Tooltip("Scale the shadow relative to the ghost's projected footprint.")]
     [SerializeField]
     private float sizeMultiplier = 1.15f;
+    [Tooltip("Minimum shadow width and height in world units.")]
     [SerializeField]
     private float minimumSize = 0.2f;
+    [Tooltip("Use the larger footprint dimension for both axes to keep the decal's aspect ratio square.")]
     [SerializeField]
     private bool forceCircular = false;
 

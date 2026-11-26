@@ -6,37 +6,397 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(100)]
 public sealed partial class ObjectGizmoController : MonoBehaviour
 {
-    [Header("Scene")]
-    [SerializeField]
-    private LayerMask selectableLayers = ~0;
+    [Header("Scene References")]
+    [Tooltip("Camera used to draw the gizmo and read pointer positions. Uses Main Camera if left blank.")]
     [SerializeField]
     private Camera targetCamera;
+    [Tooltip("Camera controller whose input is paused while a handle is dragged.")]
     [SerializeField]
     private CameraController cameraController;
-    [SerializeField]
-    private LayerMask selectionRayLayers = Physics.DefaultRaycastLayers;
-    [Header("Appearance")]
-    [SerializeField]
-    private Material outlineMaterial;
+    [Tooltip("Shader used to draw the gizmo handles.")]
     [SerializeField]
     private Shader gizmoShader;
+    [Tooltip("Material used to outline the selected object.")]
+    [SerializeField]
+    private Material outlineMaterial;
+
+    [Header("Object Selection")]
+    [Tooltip("Layers containing rigidbodies that can be selected.")]
+    [SerializeField]
+    private LayerMask selectableLayers = ~0;
+    [Tooltip("Layers the click ray can hit while looking for a selectable object.")]
+    [SerializeField]
+    private LayerMask selectionRayLayers = Physics.DefaultRaycastLayers;
+
+    [Header("Shortcuts and Starting Mode")]
+    [Tooltip("Key that switches to Move mode.")]
+    [SerializeField]
+    private Key moveKey = Key.Q;
+    [Tooltip("Key that switches to Rotate mode.")]
+    [SerializeField]
+    private Key rotateKey = Key.W;
+    [Tooltip("Key that switches between world and local axes.")]
+    [InspectorName("Toggle Local / World Key")]
+    [SerializeField]
+    private Key spaceKey = Key.E;
+    [Tooltip("Start in Rotate mode when checked. Otherwise start in Move mode.")]
+    [InspectorName("Start in Rotate Mode")]
+    [SerializeField]
+    private bool rotationTool;
+    [Tooltip("Start with axes aligned to the selected object instead of the world.")]
+    [InspectorName("Start in Local Space")]
+    [SerializeField]
+    private bool localSpace;
+
+    [Header("Gizmo Size")]
+    [Tooltip("Choose world units, adaptive sizing, or a fixed screen size with optional object scaling.")]
+    [SerializeField]
+    private GizmoSizeMode sizeMode = GizmoSizeMode.Adaptive;
+    [Tooltip("Base gizmo size in world units.")]
     [Min(.01f)]
     [SerializeField]
     private float gizmoWorldSize = 1f;
+    [Tooltip("Scale the base gizmo size with the selected object's size.")]
     [SerializeField]
     private bool autoSizeGizmo = true;
+    [Tooltip("Minimum size value when automatic object scaling is active.")]
     [Min(.01f)]
     [SerializeField]
     private float minimumGizmoSize = .25f;
-    private float selectedObjectSize = 1f;
-    [Header("Gizmo Controls")]
-    [SerializeField]
-    private Key moveKey = Key.Q, rotateKey = Key.W, spaceKey = Key.E;
-    [SerializeField]
-    private bool rotationTool, localSpace;
-    [Header("Gizmo Visuals")]
+    [Tooltip("Clamp the gizmo's screen size in Adaptive mode.")]
     [SerializeField]
     private bool limitScreenSize = true;
+    [Tooltip("Smallest screen size allowed in Adaptive mode, in pixels.")]
+    [Min(1)]
+    [SerializeField]
+    private float minimumGizmoPixels = 60;
+    [Tooltip("Largest screen size allowed in Adaptive mode, in pixels.")]
+    [Min(1)]
+    [SerializeField]
+    private float maximumGizmoPixels = 120;
+    [Tooltip("Target size in pixels for the constant screen size modes.")]
+    [Min(1)]
+    [SerializeField]
+    private float constantScreenPixels = 85;
+    [Tooltip("Object size that matches the target pixel size in Constant Screen Size Per Object mode.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float referenceObjectSize = 1;
+
+    [Header("Handle Colors and Feedback")]
+    [Tooltip("Color of the X-axis handles and the YZ plane.")]
+    [SerializeField]
+    private Color xColor = new(.94f, .47f, .47f);
+    [Tooltip("Color of the Y-axis handles and the XZ plane.")]
+    [SerializeField]
+    private Color yColor = new(.55f, .83f, .49f);
+    [Tooltip("Color of the Z-axis handles and the XY plane.")]
+    [SerializeField]
+    private Color zColor = new(.47f, .66f, .94f);
+    [Tooltip("Color blended into a move arrow or rotation arc when the pointer is over it.")]
+    [SerializeField]
+    private Color hoverColor = Color.white;
+    [Tooltip("Color of a move arrow or rotation arc while it is being dragged.")]
+    [SerializeField]
+    private Color activeColor = Color.yellow;
+    [Tooltip("Overall opacity multiplier for the gizmo.")]
+    [Range(0, 1)]
+    [SerializeField]
+    private float gizmoOpacity = 1;
+    [Tooltip("Handle opacity when the pointer is elsewhere and nothing is being dragged.")]
+    [Range(0, 1)]
+    [SerializeField]
+    private float idleOpacity = .55f;
+    [Tooltip("Handle opacity while a different handle is being dragged.")]
+    [Range(0, 1)]
+    [SerializeField]
+    private float inactiveOpacity = .1f;
+    [Tooltip("Controls how quickly handle color, opacity, and hover size respond.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float fadeDuration = .12f;
+    [Tooltip("Size multiplier for arrows and rotation arcs on hover.")]
+    [Min(1)]
+    [SerializeField]
+    private float hoverScale = 1.1f;
+
+    [Header("Move Arrows")]
+    [Tooltip("Show the arrows and plane handles in Move mode.")]
+    [SerializeField]
+    private bool showMove = true;
+    [Tooltip("Arrow length relative to the gizmo size.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float arrowLength = 1.4f;
+    [Tooltip("Base thickness of the painted move stroke.")]
+    [Min(.001f)]
+    [SerializeField]
+    private float arrowShaftThickness = .02f;
+    [Tooltip("Sideways spread of the open move arrowhead.")]
+    [Min(.001f)]
+    [SerializeField]
+    private float arrowHeadWidth = .075f;
+    [Tooltip("Length of the move arrowhead as a fraction of the arrow.")]
+    [Range(.05f, .8f)]
+    [SerializeField]
+    private float arrowHeadLength = .22f;
+    [Tooltip("Pointer tolerance around the move strokes, in pixels.")]
+    [Min(2)]
+    [SerializeField]
+    private float arrowHitRadiusPixels = 10;
+
+    [Header("Rotation Arcs")]
+    [Tooltip("Show the rotation handles in Rotate mode.")]
+    [SerializeField]
+    private bool showRotate = true;
+    [Tooltip("Radius of the rotation arcs relative to the gizmo size.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float ringRadius = .85f;
+    [Tooltip("Base thickness of the painted rotation stroke.")]
+    [Min(.001f)]
+    [SerializeField]
+    private float ringThickness = .025f;
+    [Tooltip("Number of segments used to draw each rotation arc or ring.")]
+    [Range(24, 192)]
+    [SerializeField]
+    private int ringSegments = 96;
+    [Tooltip("How much of the circle is visible, in degrees. Set to 360 for a full ring.")]
+    [Range(30, 360)]
+    [SerializeField]
+    private float arcDegrees = 180;
+    [Tooltip("Show a full ring for the active axis while rotating.")]
+    [SerializeField]
+    private bool fullRingWhileDragging = true;
+    [Tooltip("Pointer tolerance around the rotation strokes, in pixels.")]
+    [Min(2)]
+    [SerializeField]
+    private float ringHitRadiusPixels = 8;
+
+    [Header("Painted Arrows and Arcs")]
+    [Tooltip("Amount of static waviness in the painted arrows and rotation arcs.")]
+    [SerializeField, Range(0f, .12f)]
+    private float brushWobble = .045f;
+    [Tooltip("How much the brushstroke thickness varies along each stroke.")]
+    [SerializeField, Range(0f, .65f)]
+    private float brushWidthVariation = .3f;
+    [Tooltip("How strongly the Hover Color blends into arrows and arcs on hover.")]
+    [SerializeField, Range(0f, 1f)]
+    private float brushHoverTint = .4f;
+
+    [Header("Move Arrow Animation")]
+    [Tooltip("Amount of sideways bend. Negative values bend in the opposite direction.")]
+    [SerializeField, Range(-.25f, .25f)]
+    private float arrowCurvature = .065f;
+    [Tooltip("Turn the traveling wave on or off for move arrows.")]
+    [InspectorName("Animate Move Arrows")]
+    [SerializeField]
+    private bool animateArrows = true;
+    [Tooltip("Sideways wave strength relative to the arrow length.")]
+    [SerializeField, Range(0f, .2f)]
+    private float arrowWaveAmplitude = .055f;
+    [Tooltip("Wave cycles per second. Zero freezes the wave in place.")]
+    [SerializeField, Range(0f, 6f)]
+    private float arrowWaveSpeed = 1.1f;
+    [Tooltip("Number of waves along each move arrow.")]
+    [SerializeField, Range(.5f, 4f)]
+    private float arrowWaveCount = 1.5f;
+
+    [Header("Rotate Arrow Animation")]
+    [Tooltip("Amount of static inward and outward bend in the rotation stroke.")]
+    [SerializeField, Range(-.25f, .25f)]
+    private float rotateCurvature = .035f;
+    [Tooltip("Turn the traveling wave on or off for rotation handles.")]
+    [InspectorName("Animate Rotate Arcs")]
+    [SerializeField]
+    private bool animateRotationArrows = true;
+    [Tooltip("Radial wave strength relative to the ring radius.")]
+    [SerializeField, Range(0f, .2f)]
+    private float rotateWaveAmplitude = .045f;
+    [Tooltip("Wave cycles per second. Zero freezes the wave in place.")]
+    [SerializeField, Range(0f, 6f)]
+    private float rotateWaveSpeed = .9f;
+    [Tooltip("Number of waves per full revolution.")]
+    [SerializeField, Range(1, 12)]
+    private int rotateWaveCount = 5;
+
+    [Header("Plane Handle Layout")]
+    [Tooltip("Distance from the gizmo center to each tile along its two axes.")]
+    [Range(.05f, .5f)]
+    [SerializeField]
+    private float planeOffset = .15f;
+    [Tooltip("Base size of each plane tile relative to the gizmo.")]
+    [Range(.05f, .5f)]
+    [SerializeField]
+    private float planeSize = .23f;
+    [Tooltip("Extra size multiplier applied to the three plane tiles.")]
+    [Range(1, 2)]
+    [SerializeField]
+    private float planeSizeMultiplier = 1.4f;
+    [Tooltip("Place the tiles on the side of the gizmo facing the camera.")]
+    [SerializeField]
+    private bool facePlanesTowardsCamera = true;
+
+    [Header("Painted Plane Handles")]
+    [Tooltip("How rounded the corners of the plane tiles are.")]
+    [SerializeField, Range(.02f, .45f)]
+    private float planeCornerRoundness = .23f;
+    [Tooltip("Amount of static irregularity along the tile edge.")]
+    [InspectorName("Edge Wobble")]
+    [SerializeField, Range(0f, .045f)]
+    private float planeBrushRoughness = .018f;
+    [Tooltip("Thickness of the painted edge. Zero hides the edge.")]
+    [InspectorName("Edge Thickness")]
+    [SerializeField, Range(0f, .1f)]
+    private float planeBorder = .035f;
+    [Tooltip("Opacity multiplier for the tile border.")]
+    [SerializeField, Range(0f, 1f)]
+    private float planeEdgeOpacity = 1f;
+    [Tooltip("Opacity multiplier for the tile interior.")]
+    [SerializeField, Range(0f, 1f)]
+    private float planeFillOpacity = .36f;
+
+    [Header("Plane Handle Animation")]
+    [Tooltip("Turn the traveling ripple on or off for all three plane tiles.")]
+    [InspectorName("Animate Plane Tiles")]
+    [SerializeField]
+    private bool animatePlaneHandles = true;
+    [Tooltip("Ripple strength relative to the tile size.")]
+    [SerializeField, Range(0f, .2f)]
+    private float planeWaveAmplitude = .065f;
+    [Tooltip("Ripple cycles per second. Zero freezes the ripple in place.")]
+    [SerializeField, Range(0f, 6f)]
+    private float planeWaveSpeed = .85f;
+
+    [Header("Adaptive Stroke Thickness")]
+    [Tooltip("Thicken thin arrows and arcs on screen outside World Size mode.")]
+    [SerializeField]
+    private bool adaptiveGizmoThickness = true;
+    [Tooltip("Target minimum width of the move arrow shaft, in pixels.")]
+    [Min(1)]
+    [SerializeField]
+    private float minimumArrowPixels = 3f;
+    [Tooltip("Target minimum width of the move arrowhead, in pixels.")]
+    [Min(1)]
+    [SerializeField]
+    private float minimumHeadPixels = 9f;
+    [Tooltip("Target minimum thickness of rotation strokes, in pixels.")]
+    [Min(1)]
+    [SerializeField]
+    private float minimumRingPixels = 3f;
+    [Tooltip("Cap on how much adaptive sizing can thicken a stroke.")]
+    [Range(1, 20)]
+    [SerializeField]
+    private float maximumThicknessMultiplier = 10f;
+
+    [Header("Dragging and Snapping")]
+    [Tooltip("Maximum speed at which the preview follows a move drag, in world units per second.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float maxDragSpeed = 15;
+    [Tooltip("Maximum speed at which the preview follows rotation input, in degrees per second.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float maxRotationSpeed = 360;
+    [Tooltip("Multiplier for the rotation produced by pointer movement.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float rotationSensitivity = 1;
+    [Tooltip("Move step in world units while Shift is held.")]
+    [Min(.001f)]
+    [SerializeField]
+    private float moveSnap = .5f;
+    [Tooltip("Rotation step in degrees while Shift is held.")]
+    [Min(.001f)]
+    [SerializeField]
+    private float rotationSnap = 15;
+
+    [Header("On-Screen Readout")]
+    [Tooltip("Show the text readout next to the gizmo.")]
+    [SerializeField]
+    private bool showReadout = true;
+    [Tooltip("Show the current Move or Rotate mode in the readout.")]
+    [SerializeField]
+    private bool showToolLabel = true;
+    [Tooltip("Show whether the gizmo uses local or world axes.")]
+    [SerializeField]
+    private bool showSpaceLabel = true;
+    [Tooltip("Show displacement while dragging a move handle.")]
+    [SerializeField]
+    private bool showMovementDistance = true;
+    [Tooltip("Show the angle while dragging a rotation handle.")]
+    [SerializeField]
+    private bool showRotationAngle = true;
+    [Tooltip("Show a SNAP label while Shift is held.")]
+    [SerializeField]
+    private bool showSnapIndicator = true;
+
+    [Header("Pickup Lift")]
+    [Tooltip("How far the preview lifts after selection. Zero disables the lift.")]
+    [Min(0f)]
+    [SerializeField]
+    private float pickupLiftHeight = 0.5f;
+    [Tooltip("Time in seconds for the pickup lift.")]
+    [Min(0.01f)]
+    [SerializeField]
+    private float pickupLiftDuration = 0.25f;
+
+    [Header("Placement Rules")]
+    [Tooltip("Layers checked for obstacles that block placement.")]
+    [SerializeField]
+    private LayerMask obstacleLayers = ~0;
+    [Tooltip("Extra clearance required around the object during placement checks.")]
+    [Min(0)]
+    [SerializeField]
+    private float collisionClearance = .005f;
+    [Tooltip("Layers checked for ground below the preview.")]
+    [SerializeField]
+    private LayerMask groundLayers = ~0;
+    [Tooltip("Surfaces that block placement even when valid ground is below them.")]
+    [SerializeField]
+    private LayerMask forbiddenSurfaceLayers;
+    [Tooltip("Maximum distance checked for ground below the preview.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float groundDistance = 100f;
+
+    [Header("Ghost Preview")]
+    [Tooltip("Shader used to draw the placement preview.")]
+    [SerializeField]
+    private Shader ghostShader;
+    [Tooltip("Opacity of the ghost preview.")]
+    [Range(0, 1)]
+    [SerializeField]
+    private float ghostOpacity = .35f;
+    [Tooltip("Preview color for a clear placement with ground below it.")]
+    [SerializeField]
+    private Color validColor = Color.white;
+    [Tooltip("Preview color for a blocked placement or rejected confirmation.")]
+    [SerializeField]
+    private Color invalidColor = Color.red;
+    [Tooltip("Preview color when ground is missing or a forbidden surface is detected.")]
+    [SerializeField]
+    private Color noGroundColor = Color.yellow;
+    [Tooltip("Duration of the rejection feedback, in seconds.")]
+    [Min(0)]
+    [SerializeField]
+    private float rejectDuration = .25f;
+    [Tooltip("Strength of the preview shake after a rejected confirmation.")]
+    [Min(0)]
+    [SerializeField]
+    private float rejectShake = .06f;
+
+    [Header("Confirmed Placement")]
+    [Tooltip("Target speed for moving the original object to the confirmed preview.")]
+    [Min(.01f)]
+    [SerializeField]
+    private float transferSpeed = 25f;
+    [Tooltip("Time the object stays held after arrival before physics resumes, in seconds.")]
+    [Min(0)]
+    [SerializeField]
+    private float releaseDelay = .5f;
+
+    private float selectedObjectSize = 1f;
     public enum GizmoSizeMode
     {
         Adaptive,
@@ -44,54 +404,12 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         ConstantScreenSize,
         ConstantScreenSizePerObject
     }
-    [SerializeField]
-    private GizmoSizeMode sizeMode = GizmoSizeMode.Adaptive;
-    [Min(1)]
-    [SerializeField]
-    private float constantScreenPixels = 85;
-    [Min(.01f)]
-    [SerializeField]
-    private float referenceObjectSize = 1;
-    [Range(1, 2)]
-    [SerializeField]
-    private float planeSizeMultiplier = 1.4f;
-    [Range(.005f, .1f)]
-    [SerializeField]
-    private float planeBorder = .035f;
-    [SerializeField]
-    private bool facePlanesTowardsCamera = true;
-    [SerializeField]
-    private bool fullRingWhileDragging = true;
     private Mesh planeBorderMesh, fullRingMesh;
     private float drawnPlaneBorder;
     private Material planeBorderMaterial;
     private MaterialPropertyBlock planeBorderBlock;
     private float PlaneSize => planeSize * planeSizeMultiplier;
     private readonly Color[] visualColors = new Color[9];
-    [Min(1)]
-    [SerializeField]
-    private float minimumGizmoPixels = 60, maximumGizmoPixels = 120;
-    [Range(0, 1)]
-    [SerializeField]
-    private float idleOpacity = .55f, inactiveOpacity = .1f;
-    [Min(.01f)]
-    [SerializeField]
-    private float fadeDuration = .12f;
-    [Min(1)]
-    [SerializeField]
-    private float hoverScale = 1.1f;
-    [Range(30, 360)]
-    [SerializeField]
-    private float arcDegrees = 180;
-    [Range(.05f, .5f)]
-    [SerializeField]
-    private float planeOffset = .15f, planeSize = .23f;
-    [SerializeField]
-    private bool showReadout = true;
-    [SerializeField]
-    private bool showToolLabel = true, showSpaceLabel = true;
-    [SerializeField]
-    private bool showMovementDistance = true, showRotationAngle = true, showSnapIndicator = true;
     private readonly float[] visualAlpha = new float[9];
     private readonly float[] visualScale = new float[9];
     private Mesh planeMesh;
@@ -124,75 +442,8 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
                                Mathf.Max(minimumGizmoPixels, maximumGizmoPixels) * pixel);
         }
     }
-    [SerializeField]
-    private bool showMove = true,
-                 showRotate = true;
-    [Min(.01f)]
-    [SerializeField]
-    private float arrowLength = 1.4f;
-    [Min(.001f)]
-    [SerializeField]
-    private float arrowShaftThickness = .02f, arrowHeadWidth = .075f;
-    [Range(.05f, .8f)]
-    [SerializeField]
-    private float arrowHeadLength = .22f;
-    [Min(.01f)]
-    [SerializeField]
-    private float ringRadius = .85f;
-    [Min(.001f)]
-    [SerializeField]
-    private float ringThickness = .025f;
-    [Range(24, 192)]
-    [SerializeField]
-    private int ringSegments = 96;
-    [SerializeField]
-    private Color xColor = new(.94f, .47f, .47f), yColor = new(.55f, .83f, .49f),
-                  zColor = new(.47f, .66f, .94f);
-    [SerializeField]
-    private Color hoverColor = Color.white, activeColor = Color.yellow;
-    [Range(0, 1)]
-    [SerializeField]
-    private float gizmoOpacity = 1;
-    [Min(2)]
-    [SerializeField]
-    private float arrowHitRadiusPixels = 10, ringHitRadiusPixels = 8;
-    [Header("Adaptive Thickness")]
-    [SerializeField]
-    private bool adaptiveGizmoThickness = true;
-    [Min(1)]
-    [SerializeField]
-    private float minimumArrowPixels = 3f;
-    [Min(1)]
-    [SerializeField]
-    private float minimumHeadPixels = 9f;
-    [Min(1)]
-    [SerializeField]
-    private float minimumRingPixels = 3f;
-    [Range(1, 20)]
-    [SerializeField]
-    private float maximumThicknessMultiplier = 10f;
-    [Header("Manipulation")]
-    [Min(.01f)]
-    [SerializeField]
-    private float maxDragSpeed = 15, maxRotationSpeed = 360, rotationSensitivity = 1;
-    [Min(.001f)]
-    [SerializeField]
-    private float moveSnap = .5f, rotationSnap = 15;
-    [Header("Pickup Lift")]
-    [Min(0f)]
-    [SerializeField]
-    private float pickupLiftHeight = 0.5f;
-    [Min(0.01f)]
-    [SerializeField]
-    private float pickupLiftDuration = 0.25f;
     private float liftElapsed, liftTotal;
     private float remainingLift;
-    [Header("Collision checks")]
-    [SerializeField]
-    private LayerMask obstacleLayers = ~0;
-    [Min(0)]
-    [SerializeField]
-    private float collisionClearance = .005f;
     private readonly Dictionary<Rigidbody, Pose> spawnPoses = new();
     private readonly Dictionary<MeshFilter, Mesh> outlines = new();
     private readonly Dictionary<Mesh, Mesh> sharedOutlines = new();
@@ -205,23 +456,6 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     public Rigidbody SelectedObject => selected;
     public Transform PreviewTransform => ghost ? ghost.Root : null;
     public bool PreviewValid { get; private set; }
-    [Header("Ghost Placement")]
-    [SerializeField]
-    private Shader ghostShader;
-    [SerializeField]
-    private Color validColor = Color.white, invalidColor = Color.red, noGroundColor = Color.yellow;
-    [Range(0, 1)]
-    [SerializeField]
-    private float ghostOpacity = .35f;
-    [Min(.01f)]
-    [SerializeField]
-    private float transferSpeed = 25f;
-    [Min(0)]
-    [SerializeField]
-    private float releaseDelay = .5f;
-    [Min(0)]
-    [SerializeField]
-    private float rejectDuration = .25f, rejectShake = .06f;
 
     private GhostPreview ghost;
     private float rejectedUntil;
@@ -231,14 +465,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     public Vector3 GroundStart { get; private set; }
     private readonly PlacementProbe probe = new();
     private MeshRenderer[] previewRenderers;
-    [SerializeField]
-    private LayerMask groundLayers = ~0;
-    [Tooltip("Surfaces such as water that forbid placement and hide the indicator, even above valid ground.")]
-    [SerializeField] private LayerMask forbiddenSurfaceLayers;
     private bool overForbiddenSurface;
-    [Min(.01f)]
-    [SerializeField]
-    private float groundDistance = 100f;
     private bool confirmRequested;
     public Color PreviewColor => overForbiddenSurface ? noGroundColor
                                  : Time.time < rejectedUntil || !PreviewValid ? invalidColor

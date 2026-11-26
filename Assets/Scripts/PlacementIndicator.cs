@@ -4,31 +4,65 @@ using UnityEngine.Rendering;
 [DefaultExecutionOrder(102)]
 public sealed class PlacementIndicator : MonoBehaviour
 {
+    [Header("Scene References")]
+    [Tooltip("Controller that supplies the preview and ground hit. If empty, finds one in the scene.")]
     [SerializeField]
     ObjectGizmoController gizmoController;
+    [Tooltip("Camera used for constant screen sizing. Uses Main Camera if empty.")]
+    [SerializeField]
+    Camera targetCamera;
+
+    [Header("Appearance")]
+    [Tooltip("Material used to render the ground marker.")]
     [SerializeField]
     Material indicatorMaterial;
+    [Tooltip("Tint the marker with the gizmo's current placement color.")]
+    [SerializeField]
+    bool usePlacementColor = true;
+    [Tooltip("Ask the marker material to draw over other geometry.")]
+    [SerializeField]
+    bool alwaysOnTop = false;
+
+    [Header("Surface Placement")]
+    [Tooltip("Tilt the marker to match the ground. Turn off to keep it horizontal.")]
+    [SerializeField]
+    bool alignToSurface = true;
+    [Tooltip("Distance to lift the marker off the surface to avoid flickering.")]
+    [Min(.001f)]
+    [SerializeField]
+    float surfaceOffset = .025f;
+
+    [Header("Indicator Size")]
+    [Tooltip("Size the marker in world units, from the selected object, or in screen pixels.")]
+    [SerializeField]
+    IndicatorSizeMode sizeMode = IndicatorSizeMode.FixedWorldSize;
+    [Tooltip("Width in Fixed World Size mode and the fallback when a measured size is unavailable.")]
+    [Min(.01f)]
+    [SerializeField]
+    float indicatorSize = 1f;
+    [Tooltip("Multiply the object's measured width in Adaptive mode.")]
+    [Min(.01f)]
+    [SerializeField]
+    float sizeMultiplier = 1.15f;
+    [Tooltip("Smallest marker width in Adaptive mode, in world units.")]
+    [Min(.01f)]
+    [SerializeField]
+    float minimumSize = .2f;
+    [Tooltip("Largest marker width in Adaptive mode, in world units.")]
+    [Min(.01f)]
+    [SerializeField]
+    float maximumSize = 10f;
+    [Tooltip("Target marker width in Constant Screen Size mode, in pixels.")]
+    [Min(1)]
+    [SerializeField]
+    float screenPixels = 80;
+
     public enum IndicatorSizeMode
     {
         Adaptive,
         FixedWorldSize,
         ConstantScreenSize
     }
-    [SerializeField]
-    IndicatorSizeMode sizeMode = IndicatorSizeMode.FixedWorldSize;
-    [SerializeField]
-    bool alignToSurface = true, usePlacementColor = true, alwaysOnTop = false;
-    [Min(.01f)]
-    [SerializeField]
-    float indicatorSize = 1f, sizeMultiplier = 1.15f, minimumSize = .2f, maximumSize = 10f;
-    [Min(.001f)]
-    [SerializeField]
-    float surfaceOffset = .025f;
-    [SerializeField]
-    Camera targetCamera;
-    [Min(1)]
-    [SerializeField]
-    float screenPixels = 80;
     GameObject quad;
     MeshRenderer visual;
     MaterialPropertyBlock block;

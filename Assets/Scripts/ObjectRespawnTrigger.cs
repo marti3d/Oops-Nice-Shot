@@ -3,7 +3,10 @@ using UnityEngine;
 [RequireComponent(typeof(BoxCollider))]
 public sealed class ObjectRespawnTrigger : MonoBehaviour
 {
-    [SerializeField] private ObjectGizmoController gizmoController;
+    [Header("Respawn Controller")]
+    [Tooltip("Controller that restores registered objects to their spawn pose. If empty, finds one in the scene.")]
+    [SerializeField]
+    private ObjectGizmoController gizmoController;
 
     private void Reset()
     {

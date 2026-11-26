@@ -25,16 +25,20 @@ public sealed class CameraController : MonoBehaviour
     [SerializeField] private Collider movementBounds;
 
     [Header("Projection Mode")]
+    [Tooltip("Choose Perspective for depth scaling or Orthographic for a parallel view.")]
     [SerializeField] private ProjectionMode projectionMode = ProjectionMode.Perspective;
 
     [Header("Camera Framing")]
     [Min(0.1f)]
     [Tooltip("Physical distance from the camera to its focus point. Does not change while zooming.")]
     [SerializeField] private float cameraDistance = 250f;
+    [Tooltip("Starting heading around the focus point, in degrees.")]
     [SerializeField] private float initialYaw = 0f;
+    [Tooltip("Starting downward tilt in degrees, clamped to the orbit pitch limits.")]
     [Range(1f, 89f)][SerializeField] private float initialPitch = 45f;
 
     [Header("Panning (Middle Mouse)")]
+    [Tooltip("Multiplier for how far the camera pans during a middle-mouse drag.")]
     [Min(0.01f)][SerializeField] private float panSensitivity = 1f;
     [Min(0f)]
     [Tooltip("Seconds. 0 = exact tracking.")]
@@ -44,8 +48,11 @@ public sealed class CameraController : MonoBehaviour
     [Min(0.01f)]
     [Tooltip("Degrees per pixel.")]
     [SerializeField] private float rotationSensitivity = 0.2f;
+    [Tooltip("Time in seconds for orbit rotation to settle. Zero responds immediately.")]
     [Min(0f)][SerializeField] private float rotationSmoothTime = 0.08f;
+    [Tooltip("Shallowest downward tilt allowed while orbiting, in degrees.")]
     [Range(1f, 89f)][SerializeField] private float minPitch = 25f;
+    [Tooltip("Steepest downward tilt allowed while orbiting, in degrees.")]
     [Range(1f, 89f)][SerializeField] private float maxPitch = 65f;
 
     [Header("Soft Bounds (Rubber Band)")]
@@ -57,17 +64,25 @@ public sealed class CameraController : MonoBehaviour
     [SerializeField] private float boundsReturnSmoothTime = 0.18f;
 
     [Header("Perspective Zoom")]
+    [Tooltip("Starting vertical field of view in Perspective mode, in degrees.")]
     [Range(0.1f, 179f)][SerializeField] private float initialFieldOfView = 8f;
+    [Tooltip("Narrowest field of view in Perspective mode. This is the closest zoom.")]
     [Range(0.1f, 179f)][SerializeField] private float minFieldOfView = 3f;
+    [Tooltip("Widest field of view in Perspective mode. This is the farthest zoom.")]
     [Range(0.1f, 179f)][SerializeField] private float maxFieldOfView = 18f;
 
     [Header("Orthographic Zoom")]
+    [Tooltip("Starting half-height of the Orthographic view, in world units.")]
     [Min(0.01f)][SerializeField] private float initialOrthographicSize = 17.5f;
+    [Tooltip("Smallest Orthographic half-height. This is the closest zoom.")]
     [Min(0.01f)][SerializeField] private float minOrthographicSize = 6.5f;
+    [Tooltip("Largest Orthographic half-height. This is the farthest zoom.")]
     [Min(0.01f)][SerializeField] private float maxOrthographicSize = 40f;
 
     [Header("Zoom Feel")]
+    [Tooltip("How much one scroll notch changes the zoom.")]
     [Min(0.001f)][SerializeField] private float zoomSensitivity = 0.12f;
+    [Tooltip("Time in seconds for zoom to settle. Zero responds immediately.")]
     [Min(0f)][SerializeField] private float zoomSmoothTime = 0.12f;
     [Min(1f)]
     [Tooltip("Raw scroll units that count as one notch (120 on Windows mice).")]

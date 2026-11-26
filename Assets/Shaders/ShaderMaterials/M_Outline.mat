@@ -29,7 +29,7 @@ Material:
     - _ColorMask: 15
     - _Cull: 1
     - _MaskMode: 0
-    - _OutlinePixels: 3
+    - _OutlinePixels: 2
     - _OutlineWidth: 0.025
     - _ScreenSpaceWidth: 1
     - _StencilComp: 6
