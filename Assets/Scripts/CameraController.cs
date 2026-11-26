@@ -273,7 +273,7 @@ public sealed class CameraController : MonoBehaviour
             if (!warnedBounds)
             {
                 warnedBounds = true;
-                Debug.LogWarning("MiniGolfCameraController: bounds collider must be Box, Sphere, Capsule " +
+                Debug.LogWarning("CameraController: bounds collider must be Box, Sphere, Capsule " +
                                  "or a CONVEX Mesh collider. Bounds are ignored.", this);
             }
             return false;

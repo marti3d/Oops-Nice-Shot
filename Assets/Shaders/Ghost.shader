@@ -4,26 +4,22 @@ Shader "MiniGolf/Ghost"
     {
         [MainTexture] _BaseMap("Base Map", 2D) = "white" {}
         [MainColor] _BaseColor("Base Color", Color) = (1,1,1,0.35)
-        [HideInInspector] _Surface("Surface", Float) = 1
-        [HideInInspector] _Blend("Blend", Float) = 0
-        [HideInInspector] _SrcBlend("Src Blend", Float) = 5
-        [HideInInspector] _DstBlend("Dst Blend", Float) = 10
-        [HideInInspector] _SrcBlendAlpha("Src Blend Alpha", Float) = 1
-        [HideInInspector] _DstBlendAlpha("Dst Blend Alpha", Float) = 10
-        [HideInInspector] _ZWrite("ZWrite", Float) = 0
+        _Cutoff("Source Cutoff", Range(0,1)) = 0
+        _SourceAlpha("Source Alpha", Range(0,1)) = 1
     }
     SubShader
     {
-        Tags { "RenderPipeline"="UniversalPipeline" "RenderType"="Transparent" "Queue"="Transparent" }
+        Tags { "RenderPipeline"="UniversalPipeline" "RenderType"="TransparentCutout" "Queue"="AlphaTest" }
         Pass
         {
             Name "GhostForward"
-            Tags { "LightMode"="UniversalForward" }
-            Blend [_SrcBlend] [_DstBlend], [_SrcBlendAlpha] [_DstBlendAlpha]
-            ZWrite [_ZWrite]
+            Tags { "LightMode"="UniversalForwardOnly" }
+            Blend Off
+            ZWrite On
             ZTest LEqual
             Cull Back
             HLSLPROGRAM
+            #pragma target 3.5
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_instancing
@@ -33,7 +29,7 @@ Shader "MiniGolf/Ghost"
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
                 half4 _BaseColor;
-                float _Surface, _Blend, _SrcBlend, _DstBlend, _SrcBlendAlpha, _DstBlendAlpha, _ZWrite;
+                float _Cutoff, _SourceAlpha;
             CBUFFER_END
             struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; UNITY_VERTEX_OUTPUT_STEREO };
@@ -49,7 +45,19 @@ Shader "MiniGolf/Ghost"
             half4 frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-                return SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
+                half4 texel = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
+                half sourceAlpha = texel.a * _SourceAlpha;
+                clip(sourceAlpha - _Cutoff);
+                // Repeating 4x4 Bayer pattern, evaluated in screen pixels.
+                uint2 pixel = (uint2)input.positionCS.xy;
+                uint2 low = pixel & 1u;
+                uint2 high = (pixel >> 1u) & 1u;
+                uint a = ((low.x ^ low.y) << 1u) + low.y;
+                uint b = ((high.x ^ high.y) << 1u) + high.y;
+                half threshold = (4u * a + b + 0.5h) / 16.0h;
+                clip(sourceAlpha * _BaseColor.a - threshold);
+                return half4(texel.rgb * _BaseColor.rgb, 1);
+
             }
             ENDHLSL
         }

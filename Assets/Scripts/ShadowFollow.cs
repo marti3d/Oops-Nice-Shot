@@ -7,123 +7,90 @@ using UnityEngine.Rendering.Universal;
 public class ShadowFollow : MonoBehaviour
 {
     [Header("Selection")]
-    [SerializeField] private ObjectGizmoController gizmoController;
+    [SerializeField]
+    private ObjectGizmoController gizmoController;
 
-    [SerializeField] private GhostGroundLine groundLine;
-    [SerializeField] private LayerMask groundLayers = ~0;
-    [SerializeField] private float rayDistance = 100f;
-    [Min(.001f)][SerializeField] private float projectionDepth = .02f;
+    [Min(.001f)]
+    [SerializeField]
+    private float projectionDepth = .02f;
 
     [Header("Shadow Settings")]
-    [SerializeField] private float verticalOffset = 0f;
-    [SerializeField] private float sizeMultiplier = 1.15f;
-    [SerializeField] private float minimumSize = 0.2f;
-    [SerializeField] private bool forceCircular = false;
+    [SerializeField]
+    private float verticalOffset = 0f;
+    [SerializeField]
+    private float sizeMultiplier = 1.15f;
+    [SerializeField]
+    private float minimumSize = 0.2f;
+    [SerializeField]
+    private bool forceCircular = false;
 
     private DecalProjector projector;
-    private Rigidbody currentTarget;
-    private Vector3 localCenter;
+    private MeshRenderer[] renderers;
+    private Transform lastPreview;
 
     private void Awake()
     {
+        if (!gizmoController)
+            gizmoController = FindAnyObjectByType<ObjectGizmoController>();
         projector = GetComponent<DecalProjector>();
         projector.enabled = false;
     }
 
     private void LateUpdate()
     {
-        if (!gizmoController) gizmoController = FindAnyObjectByType<ObjectGizmoController>();
-        if (!groundLine) groundLine = FindAnyObjectByType<GhostGroundLine>();
-        Rigidbody selected = gizmoController != null
-            ? gizmoController.SelectedObject
-            : null;
-
-        Transform preview = gizmoController != null ? gizmoController.PreviewTransform : null;
-        if (selected == null || preview == null)
+        Transform preview = gizmoController ? gizmoController.PreviewTransform : null;
+        if (!preview || !gizmoController.HasGround)
         {
             projector.enabled = false;
-            if (!selected || !preview) currentTarget = null;
             return;
         }
-
-        // Calculate size only when selection changes.
-        if (currentTarget != selected)
+        if (lastPreview != preview)
         {
-            currentTarget = selected;
-            CalculateShadowSize(selected);
+            lastPreview = preview;
+            renderers = preview.GetComponentsInChildren<MeshRenderer>();
         }
-
-        Vector3 start;
-        RaycastHit hit;
-        bool found = groundLine && groundLine.isActiveAndEnabled
-            ? groundLine.TryGround(preview, selected, out start, out hit)
-            : GhostGroundLine.TryGround(preview, selected, groundLayers, rayDistance, out start, out hit);
-        if (!found) { projector.enabled = false; return; }
-        float depth = Mathf.Clamp(projectionDepth, .001f, .05f);
-        projector.size = new Vector3(projector.size.x, projector.size.y, depth);
-        projector.pivot = Vector3.zero;
-        transform.SetPositionAndRotation(hit.point + hit.normal * verticalOffset, Quaternion.LookRotation(-hit.normal, Vector3.forward));
-
-        projector.enabled = true;
-    }
-
-    private void CalculateShadowSize(Rigidbody target)
-    {
-        Renderer[] renderers =
-            target.GetComponentsInChildren<Renderer>();
-
-        Bounds bounds = new Bounds(
-            target.position, Vector3.zero);
-
-        bool hasBounds = false;
-
-        foreach (Renderer r in renderers)
+        var hit = gizmoController.GroundHit;
+        Vector3 up = Vector3.ProjectOnPlane(preview.forward, hit.normal);
+        if (up.sqrMagnitude < .0001f)
+            up = Vector3.ProjectOnPlane(preview.up, hit.normal);
+        Quaternion rotation = Quaternion.LookRotation(-hit.normal, up);
+        Quaternion inverse = Quaternion.Inverse(rotation);
+        Bounds footprint = default;
+        bool found = false;
+        foreach (var renderer in renderers)
         {
-            if (r == null || !r.enabled ||
-                !r.gameObject.activeInHierarchy)
+            if (!renderer || !renderer.enabled)
                 continue;
-
-            if (!(r is MeshRenderer ||
-                  r is SkinnedMeshRenderer))
-                continue;
-
-            if (!hasBounds)
+            Bounds local = renderer.localBounds;
+            for (int i = 0; i < 8; i++)
             {
-                bounds = r.bounds;
-                hasBounds = true;
-            }
-            else
-            {
-                bounds.Encapsulate(r.bounds);
+                var signs = new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1);
+                var corner =
+                    renderer.transform.TransformPoint(local.center + Vector3.Scale(local.extents, signs));
+                var point = inverse * (corner - hit.point);
+                if (found)
+                    footprint.Encapsulate(point);
+                else
+                    footprint = new Bounds(point, Vector3.zero);
+                found = true;
             }
         }
-
-        float width = Mathf.Max(
-            minimumSize, bounds.size.x * sizeMultiplier);
-
-        float height = Mathf.Max(
-            minimumSize, bounds.size.z * sizeMultiplier);
-
+        float width = Mathf.Max(minimumSize, footprint.size.x * sizeMultiplier);
+        float height = Mathf.Max(minimumSize, footprint.size.y * sizeMultiplier);
         if (forceCircular)
-        {
             width = height = Mathf.Max(width, height);
-        }
-
-        projector.size = new Vector3(
-            width,
-            height,
-            projector.size.z
-        );
-
-        localCenter = target.transform.InverseTransformPoint(
-            bounds.center);
+        projector.size = new Vector3(width, height, Mathf.Clamp(projectionDepth, .001f, .05f));
+        projector.pivot = Vector3.zero;
+        var center = new Vector3(footprint.center.x, footprint.center.y, 0);
+        transform.SetPositionAndRotation(hit.point + rotation * center + hit.normal * verticalOffset,
+                                         rotation);
+        projector.enabled = found;
     }
 
     private void OnDisable()
     {
-        if (projector != null)
+        if (projector)
             projector.enabled = false;
-
-        currentTarget = null;
+        lastPreview = null;
     }
 }

@@ -135,7 +135,7 @@ GameObject:
   - component: {fileID: 217020669}
   - component: {fileID: 217020668}
   - component: {fileID: 217020667}
-  m_Layer: 0
+  m_Layer: 4
   m_Name: SM_Water
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -362,7 +362,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlacementIndicator
   gizmoController: {fileID: 1985421925}
-  groundLine: {fileID: 1292842057}
   indicatorMaterial: {fileID: 2100000, guid: 46a4175c016b6994e8b6e2879104591c, type: 2}
   sizeMode: 1
   alignToSurface: 1
@@ -1181,11 +1180,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GhostGroundLine
   gizmoController: {fileID: 1985421925}
   targetCamera: {fileID: 1985421919}
-  groundLayers:
-    serializedVersion: 2
-    m_Bits: 72
-  rayDistance: 100
-  lineMaterial: {fileID: 0}
+  lineMaterial: {fileID: 2100000, guid: 0cd12366fbc47934f916fe29159c04cd, type: 2}
   lineColor: {r: 1, g: 1, b: 0.8156863, a: 1}
   usePlacementColor: 1
   adaptiveWidth: 1
@@ -1425,7 +1420,7 @@ GameObject:
   - component: {fileID: 1456780335}
   - component: {fileID: 1456780340}
   - component: {fileID: 1456780339}
-  m_Layer: 0
+  m_Layer: 4
   m_Name: SM_Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2239,8 +2234,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   collisionClearance: 0.005
-  translationStep: 0.025
-  rotationStep: 1
   ghostShader: {fileID: 4800000, guid: d80d113d96590fc4b8026d7b930fd18f, type: 3}
   validColor: {r: 1, g: 1, b: 0.5254902, a: 1}
   invalidColor: {r: 1, g: 0, b: 0, a: 1}
@@ -2250,7 +2243,13 @@ MonoBehaviour:
   releaseDelay: 0.5
   rejectDuration: 0.25
   rejectShake: 0.06
-  groundLine: {fileID: 0}
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 72
+  forbiddenSurfaceLayers:
+    serializedVersion: 2
+    m_Bits: 16
+  groundDistance: 100
 --- !u!1 &2028287032
 GameObject:
   m_ObjectHideFlags: 0
