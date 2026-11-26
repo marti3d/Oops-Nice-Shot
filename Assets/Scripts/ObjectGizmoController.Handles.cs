@@ -20,11 +20,18 @@ public sealed partial class ObjectGizmoController
 
     private Vector3[] originalArcVertices, animatedArcVertices;
     private Vector3[] originalRingVertices, animatedRingVertices;
-    private float rotateWavePhase;
+    private readonly Mesh[] arcMeshes = new Mesh[3];
+    private readonly float[] rotateHoverBlend = new float[3];
+    private readonly float[] rotateWavePhase = new float[3];
+    private readonly float[] rotateWaveTime = new float[3];
+    private readonly float[] rotateWaveVariation = new float[3];
 
     private Vector3[] originalArrowVertices, animatedArrowVertices;
-    private int waveFrame = -1;
-    private float arrowWavePhase;
+    private readonly Mesh[] arrowMeshes = new Mesh[3];
+    private readonly float[] arrowHoverBlend = new float[3];
+    private readonly float[] arrowWavePhase = new float[3];
+    private readonly float[] arrowWaveTime = new float[3];
+    private readonly float[] arrowWaveVariation = new float[3];
 
     private float drawnBrushWobble = -1f, drawnBrushWidthVariation = -1f;
     private Vector3[][] arrowPaths, ringPaths;
@@ -36,14 +43,19 @@ public sealed partial class ObjectGizmoController
                                 PlaneDirection((i + 2) % 3) * (planeOffset + v * PlaneSize));
 
 
-    private float planeWavePhase;
+    private readonly Mesh[] planeMeshes = new Mesh[3];
+    private readonly Mesh[] planeBorderMeshes = new Mesh[3];
+    private readonly float[] planeHoverBlend = new float[3];
+    private readonly float[] planeWavePhase = new float[3];
+    private readonly float[] planeWaveTime = new float[3];
+    private readonly float[] planeWaveVariation = new float[3];
     private Vector3[] originalTileFill, animatedTileFill, originalTileBorder, animatedTileBorder;
 
     private static readonly Vector2 TileCenter = new(.5f, .5f);
     private Vector2[] planeOutline;
     private float drawnPlaneRoundness, drawnPlaneRoughness;
 
-    private Mesh BuildPlaneBorder()
+    private void BuildPlaneMeshes()
     {
         const int samples = 80;
         planeOutline = new Vector2[samples];
@@ -89,7 +101,8 @@ public sealed partial class ObjectGizmoController
             }
         }
 
-        planeMesh.Clear();
+        DestroyPlaneMeshes();
+        var planeMesh = new Mesh { name = "Painted Plane Fill" };
         planeMesh.vertices = fill;
         planeMesh.SetTriangles(fillTriangles, 0);
         planeMesh.MarkDynamic();
@@ -97,18 +110,27 @@ public sealed partial class ObjectGizmoController
         originalTileFill = fill;
         animatedTileFill = new Vector3[fill.Length];
 
-        var mesh = new Mesh { name = "Painted Plane Border" };
-        mesh.SetVertices(border);
-        mesh.subMeshCount = edges.Length;
+        var borderMesh = new Mesh { name = "Painted Plane Border" };
+        borderMesh.SetVertices(border);
+        borderMesh.subMeshCount = edges.Length;
         for (int i = 0; i < edges.Length; i++)
-            mesh.SetTriangles(edges[i], i);
-        mesh.MarkDynamic();
-        mesh.RecalculateBounds();
+            borderMesh.SetTriangles(edges[i], i);
+        borderMesh.MarkDynamic();
+        borderMesh.RecalculateBounds();
         originalTileBorder = border.ToArray();
         animatedTileBorder = new Vector3[originalTileBorder.Length];
         drawnPlaneRoundness = planeCornerRoundness;
         drawnPlaneRoughness = planeBrushRoughness;
-        return mesh;
+        drawnPlaneBorder = planeBorder;
+        planeMeshes[0] = planeMesh;
+        planeBorderMeshes[0] = borderMesh;
+        for (int i = 1; i < planeMeshes.Length; i++)
+        {
+            planeMeshes[i] = Instantiate(planeMesh);
+            planeMeshes[i].MarkDynamic();
+            planeBorderMeshes[i] = Instantiate(borderMesh);
+            planeBorderMeshes[i].MarkDynamic();
+        }
     }
 
     private static void AddTileTriangle(List<int> triangles, int a, int b, int c)
@@ -137,8 +159,8 @@ public sealed partial class ObjectGizmoController
             UpdateRotationMesh();
         else if (!rotationTool && showMove)
         {
-            UpdateArrowMesh();
-            UpdatePlaneMesh();
+            UpdateArrowMeshes();
+            UpdatePlaneMeshes();
         }
         if (outlineMaterial && outlines.Count > 0)
         {
@@ -216,12 +238,12 @@ public sealed partial class ObjectGizmoController
                 Vector3 u = PlaneDirection((n + 1) % 3), v = PlaneDirection((n + 2) % 3);
                 matrix = Matrix4x4.TRS(PlanePoint(n, 0, 0), Quaternion.LookRotation(Vector3.Cross(u, v), v),
                                        Vector3.one * EffectiveGizmoSize * PlaneSize);
-                mesh = planeMesh;
+                mesh = planeMeshes[n];
                 bool highlighted = hover == i || drag == i;
                 Color edgeColor = c;
                 edgeColor.a = Mathf.Clamp01(c.a * 1.5f) * planeEdgeOpacity;
                 planeBorderBlock.SetColor("_BaseColor", edgeColor);
-                Graphics.DrawMesh(planeBorderMesh, matrix, planeBorderMaterial, 0, cam, highlighted ? 1 : 0,
+                Graphics.DrawMesh(planeBorderMeshes[n], matrix, planeBorderMaterial, 0, cam, highlighted ? 1 : 0,
                                   planeBorderBlock, UnityEngine.Rendering.ShadowCastingMode.Off, false);
                 c.a = Mathf.Clamp01(c.a * (highlighted ? 1.35f : 1f)) * planeFillOpacity;
                 materials[i].SetColor("_BaseColor", c);
@@ -229,7 +251,7 @@ public sealed partial class ObjectGizmoController
             else
             {
                 matrix = StrokeMatrix(i);
-                mesh = i < 3 ? arrowMesh : (fullRingWhileDragging && drag == i ? fullRingMesh : ringMesh);
+                mesh = i < 3 ? arrowMeshes[i] : (fullRingWhileDragging && drag == i ? fullRingMesh : arcMeshes[i - 3]);
             }
             Graphics.DrawMesh(mesh, matrix, materials[i], 0, cam, 0, null,
                               UnityEngine.Rendering.ShadowCastingMode.Off, false);
@@ -266,10 +288,10 @@ public sealed partial class ObjectGizmoController
         float size = EffectiveGizmoSize * PlaneSize;
         Vector2 point = new(Vector3.Dot(d, u) / size, Vector3.Dot(d, v) / size);
         bool inside = false;
-        Vector2 previous = AnimateTilePoint(planeOutline[planeOutline.Length - 1]);
+        Vector2 previous = AnimateTilePoint(i, planeOutline[planeOutline.Length - 1]);
         foreach (Vector2 outlinePoint in planeOutline)
         {
-            Vector2 current = AnimateTilePoint(outlinePoint);
+            Vector2 current = AnimateTilePoint(i, outlinePoint);
             if ((current.y > point.y) != (previous.y > point.y) &&
                 point.x < (previous.x - current.x) * (point.y - current.y) /
                           (previous.y - current.y) + current.x)
@@ -282,7 +304,6 @@ public sealed partial class ObjectGizmoController
     {
         if (!ghost)
             return -1;
-        AdvanceWaves();
         if (!rotationTool && showMove)
             for (int i = 0; i < 3; i++)
                 if (PlaneHit(i, mouse))
@@ -316,80 +337,146 @@ public sealed partial class ObjectGizmoController
     }
     private Vector3 StrokeWorldPoint(int handle, Matrix4x4 matrix, Vector3 point)
     {
-        return matrix.MultiplyPoint3x4(handle < 3 ? BendArrowPoint(point) : BendRotationPoint(point));
+        return matrix.MultiplyPoint3x4(handle < 3 ? BendArrowPoint(handle, point) : BendRotationPoint(handle - 3, point));
     }
 
-    private void AdvanceWaves()
+    private Vector2 AnimateTilePoint(int planeIndex, Vector2 point)
     {
-        if (waveFrame == Time.frameCount)
-            return;
-
-        waveFrame = Time.frameCount;
-        if (animateArrows)
-            arrowWavePhase = Mathf.Repeat(arrowWavePhase + Time.deltaTime * arrowWaveSpeed, 1f);
-        if (animateRotationArrows)
-            rotateWavePhase = Mathf.Repeat(rotateWavePhase + Time.deltaTime * rotateWaveSpeed, 1f);
-        if (animatePlaneHandles)
-            planeWavePhase = Mathf.Repeat(planeWavePhase + Time.deltaTime * planeWaveSpeed, 1f);
-    }
-
-    private Vector2 AnimateTilePoint(Vector2 point)
-    {
-        if (!animatePlaneHandles || planeWaveAmplitude <= 0f)
+        float blend = HoverEase(planeHoverBlend[planeIndex], planeHoverEasing);
+        if (blend <= 0f || planeWaveAmplitude <= 0f)
             return point;
 
         Vector2 offset = point - TileCenter;
         float angle = Mathf.Atan2(offset.y, offset.x);
-        float wave = Mathf.Sin(3f * angle - 2f * Mathf.PI * planeWavePhase);
-        return TileCenter + offset * (1f + planeWaveAmplitude * wave);
+        float wave = Mathf.Sin(3f * angle - 2f * Mathf.PI * planeWavePhase[planeIndex]);
+        float strength = planeWaveAmplitude * (1f + .45f * planeWaveVariation[planeIndex]);
+        return TileCenter + offset * (1f + blend * strength * wave);
     }
 
-    private void UpdatePlaneMesh()
+    private void UpdatePlaneMeshes()
     {
-        UpdateTileVertices(planeMesh, originalTileFill, animatedTileFill);
-        UpdateTileVertices(planeBorderMesh, originalTileBorder, animatedTileBorder);
+        for (int planeIndex = 0; planeIndex < planeMeshes.Length; planeIndex++)
+        {
+            int handle = planeIndex + 6;
+            bool engaged = animatePlaneHandles && (drag >= 0 ? drag == handle : hover == handle);
+            float previous = planeHoverBlend[planeIndex];
+            float duration = Mathf.Max(.01f, engaged ? planeHoverFadeIn : planeHoverFadeOut);
+            float blend = Mathf.MoveTowards(previous, engaged ? 1f : 0f, Time.deltaTime / duration);
+            planeHoverBlend[planeIndex] = blend;
+            if (previous == 0f && blend == 0f)
+                continue;
+
+            if (blend > 0f)
+            {
+                planeWaveTime[planeIndex] += Time.deltaTime * planeWaveSpeed;
+                float noise = Mathf.Clamp01(Mathf.PerlinNoise(planeWaveTime[planeIndex] * .41f,
+                                                             91f + 11f * planeIndex));
+                float variation = (2f * noise - 1f) * planeWaveRandomness;
+                planeWaveVariation[planeIndex] = variation;
+                float speed = planeWaveSpeed * (1f + .55f * variation);
+                planeWavePhase[planeIndex] = Mathf.Repeat(planeWavePhase[planeIndex] + Time.deltaTime * speed, 1f);
+            }
+
+            UpdateTileVertices(planeIndex, planeMeshes[planeIndex], originalTileFill, animatedTileFill);
+            UpdateTileVertices(planeIndex, planeBorderMeshes[planeIndex], originalTileBorder, animatedTileBorder);
+        }
     }
 
-    private void UpdateTileVertices(Mesh mesh, Vector3[] original, Vector3[] animated)
+    private void UpdateTileVertices(int planeIndex, Mesh mesh, Vector3[] original, Vector3[] animated)
     {
         for (int i = 0; i < original.Length; i++)
-            animated[i] = AnimateTilePoint(original[i]);
+            animated[i] = AnimateTilePoint(planeIndex, original[i]);
 
         mesh.SetVertices(animated);
         mesh.RecalculateBounds();
     }
 
-    private Vector3 BendArrowPoint(Vector3 point)
+    private void DestroyPlaneMeshes()
+    {
+        for (int i = 0; i < planeMeshes.Length; i++)
+        {
+            if (planeMeshes[i])
+                Destroy(planeMeshes[i]);
+            if (planeBorderMeshes[i])
+                Destroy(planeBorderMeshes[i]);
+        }
+    }
+
+    private Vector3 BendArrowPoint(int handle, Vector3 point)
     {
         float t = Mathf.Clamp01(point.z);
-        // Keep the root and tip on the movement axis.
         float envelope = 4f * t * (1f - t);
+        float variation = arrowWaveVariation[handle];
         float wave = animateArrows
-            ? arrowWaveAmplitude * Mathf.Sin(2f * Mathf.PI * (t * arrowWaveCount - arrowWavePhase))
+            ? arrowWaveAmplitude * (1f + .45f * variation) *
+              Mathf.Sin(2f * Mathf.PI * (t * (arrowWaveCount + .3f * variation) - arrowWavePhase[handle]))
             : 0f;
-        point.x += envelope * (arrowCurvature + wave);
+        float brushBend = brushWobble *
+            (Mathf.Sin(t * 4f * Mathf.PI) + .28f * Mathf.Sin(t * 7f * Mathf.PI)) *
+            Mathf.Sin(t * Mathf.PI);
+        float blend = HoverEase(arrowHoverBlend[handle], arrowHoverEasing);
+        point.x += blend * (brushBend + envelope * (arrowCurvature + wave));
         return point;
     }
 
-    private void UpdateArrowMesh()
+    private void UpdateArrowMeshes()
     {
-        AdvanceWaves();
-        for (int i = 0; i < originalArrowVertices.Length; i++)
-            animatedArrowVertices[i] = BendArrowPoint(originalArrowVertices[i]);
+        for (int handle = 0; handle < arrowMeshes.Length; handle++)
+        {
+            bool engaged = drag >= 0 ? drag == handle : hover == handle;
+            float previousBlend = arrowHoverBlend[handle];
+            float targetBlend = engaged ? 1f : 0f;
+            float duration = Mathf.Max(.01f, engaged ? arrowHoverTransition : arrowHoverFadeOut);
+            float blend = Mathf.MoveTowards(previousBlend, targetBlend, Time.deltaTime / duration);
+            arrowHoverBlend[handle] = blend;
+            if (previousBlend == 0f && blend == 0f)
+                continue;
 
-        arrowMesh.SetVertices(animatedArrowVertices);
-        arrowMesh.RecalculateBounds();
-        arrowMesh.RecalculateNormals();
+            if (animateArrows && blend > 0f)
+            {
+                // Smooth noise varies the wave without jumping between random values.
+                arrowWaveTime[handle] += Time.deltaTime * arrowWaveSpeed;
+                float noise = Mathf.Clamp01(Mathf.PerlinNoise(arrowWaveTime[handle] * .41f, 19f + 11f * handle));
+                float variation = (2f * noise - 1f) * arrowWaveRandomness;
+                arrowWaveVariation[handle] = variation;
+                float speed = arrowWaveSpeed * (1f + .55f * variation);
+                arrowWavePhase[handle] = Mathf.Repeat(arrowWavePhase[handle] + Time.deltaTime * speed, 1f);
+            }
+
+            for (int i = 0; i < originalArrowVertices.Length; i++)
+                animatedArrowVertices[i] = BendArrowPoint(handle, originalArrowVertices[i]);
+
+            Mesh mesh = arrowMeshes[handle];
+            mesh.SetVertices(animatedArrowVertices);
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+        }
     }
 
-    private Vector3 BendRotationPoint(Vector3 point)
+    private void DestroyArrowMeshes()
+    {
+        foreach (Mesh mesh in arrowMeshes)
+            if (mesh)
+                Destroy(mesh);
+    }
+
+    private static float HoverEase(float amount, float easing)
+    {
+        return Mathf.Lerp(amount, Mathf.SmoothStep(0f, 1f, amount), easing);
+    }
+
+    private Vector3 BendRotationPoint(int axisIndex, Vector3 point)
     {
         float angle = Mathf.Atan2(point.y, point.x);
-        // Whole wave counts keep the deformation continuous across the full-ring seam.
+        float variation = rotateWaveVariation[axisIndex];
+        // Keep wave counts integral so the full ring joins cleanly.
         float wave = animateRotationArrows
-            ? rotateWaveAmplitude * Mathf.Sin(angle * rotateWaveCount - 2f * Mathf.PI * rotateWavePhase)
+            ? rotateWaveAmplitude * (1f + .45f * variation) *
+              Mathf.Sin(angle * rotateWaveCount - 2f * Mathf.PI * rotateWavePhase[axisIndex])
             : 0f;
-        float scale = 1f + rotateCurvature * Mathf.Cos(2f * angle) + wave;
+        float brushBend = brushWobble * (.55f * Mathf.Sin(3f * angle) + .25f * Mathf.Sin(7f * angle + .4f));
+        float blend = HoverEase(rotateHoverBlend[axisIndex], rotateHoverEasing);
+        float scale = 1f + blend * (brushBend + rotateCurvature * Mathf.Cos(2f * angle) + wave);
         point.x *= scale;
         point.y *= scale;
         return point;
@@ -397,21 +484,51 @@ public sealed partial class ObjectGizmoController
 
     private void UpdateRotationMesh()
     {
-        AdvanceWaves();
-        bool fullRing = fullRingWhileDragging && drag >= 3 && drag < 6;
-        UpdateRotationStroke(ringMesh, originalArcVertices, animatedArcVertices);
-        if (fullRing)
-            UpdateRotationStroke(fullRingMesh, originalRingVertices, animatedRingVertices);
+        for (int axisIndex = 0; axisIndex < arcMeshes.Length; axisIndex++)
+        {
+            int handle = axisIndex + 3;
+            bool engaged = drag >= 0 ? drag == handle : hover == handle;
+            float previousBlend = rotateHoverBlend[axisIndex];
+            float duration = Mathf.Max(.01f, engaged ? rotateHoverFadeIn : rotateHoverFadeOut);
+            float blend = Mathf.MoveTowards(previousBlend, engaged ? 1f : 0f, Time.deltaTime / duration);
+            rotateHoverBlend[axisIndex] = blend;
+            if (previousBlend == 0f && blend == 0f)
+                continue;
+
+            if (animateRotationArrows && blend > 0f)
+            {
+                rotateWaveTime[axisIndex] += Time.deltaTime * rotateWaveSpeed;
+                float noise = Mathf.Clamp01(Mathf.PerlinNoise(rotateWaveTime[axisIndex] * .41f,
+                                                             53f + 11f * axisIndex));
+                float variation = (2f * noise - 1f) * rotateWaveRandomness;
+                rotateWaveVariation[axisIndex] = variation;
+                float speed = rotateWaveSpeed * (1f + .55f * variation);
+                rotateWavePhase[axisIndex] = Mathf.Repeat(rotateWavePhase[axisIndex] + Time.deltaTime * speed, 1f);
+            }
+
+            UpdateRotationStroke(axisIndex, arcMeshes[axisIndex], originalArcVertices, animatedArcVertices);
+            if (fullRingWhileDragging && drag == handle)
+                UpdateRotationStroke(axisIndex, fullRingMesh, originalRingVertices, animatedRingVertices);
+        }
     }
 
-    private void UpdateRotationStroke(Mesh mesh, Vector3[] original, Vector3[] animated)
+    private void UpdateRotationStroke(int axisIndex, Mesh mesh, Vector3[] original, Vector3[] animated)
     {
         for (int i = 0; i < original.Length; i++)
-            animated[i] = BendRotationPoint(original[i]);
+            animated[i] = BendRotationPoint(axisIndex, original[i]);
 
         mesh.SetVertices(animated);
         mesh.RecalculateBounds();
         mesh.RecalculateNormals();
+    }
+
+    private void DestroyRotationMeshes()
+    {
+        foreach (Mesh mesh in arcMeshes)
+            if (mesh)
+                Destroy(mesh);
+        if (fullRingMesh)
+            Destroy(fullRingMesh);
     }
 
     private static float StrokeDistance(Vector2 mouse, Vector3 a, Vector3 b)
@@ -546,14 +663,11 @@ public sealed partial class ObjectGizmoController
     // Convert desired screen pixels to world units using the actual camera projection.
     private void RefreshGizmoMeshes()
     {
-        if (planeBorderMesh && (!Mathf.Approximately(drawnPlaneBorder, planeBorder) ||
-                                !Mathf.Approximately(drawnPlaneRoundness, planeCornerRoundness) ||
-                                !Mathf.Approximately(drawnPlaneRoughness, planeBrushRoughness)))
-        {
-            Destroy(planeBorderMesh);
-            planeBorderMesh = BuildPlaneBorder();
-            drawnPlaneBorder = planeBorder;
-        }
+        if (!planeMeshes[0] || !Mathf.Approximately(drawnPlaneBorder, planeBorder) ||
+            !Mathf.Approximately(drawnPlaneRoundness, planeCornerRoundness) ||
+            !Mathf.Approximately(drawnPlaneRoughness, planeBrushRoughness))
+            BuildPlaneMeshes();
+
         float shaft = arrowShaftThickness, head = arrowHeadWidth, ring = ringThickness;
         if (adaptiveGizmoThickness && sizeMode != GizmoSizeMode.WorldSize && selected && cam &&
             cam.pixelHeight > 0)
@@ -578,34 +692,36 @@ public sealed partial class ObjectGizmoController
         }
         bool brushChanged = !Mathf.Approximately(brushWobble, drawnBrushWobble) ||
                             !Mathf.Approximately(brushWidthVariation, drawnBrushWidthVariation);
-        if (!arrowMesh || brushChanged || ThicknessChanged(shaft, drawnShaft) || ThicknessChanged(head, drawnHead) ||
+        if (!arrowMeshes[0] || brushChanged || ThicknessChanged(shaft, drawnShaft) || ThicknessChanged(head, drawnHead) ||
             !Mathf.Approximately(arrowHeadLength, drawnHeadLength))
         {
-            if (arrowMesh)
-                Destroy(arrowMesh);
+            DestroyArrowMeshes();
             arrowPaths = BuildArrowPaths(head);
-            arrowMesh = BuildBrushMesh("Painted Gizmo Arrow", arrowPaths, Vector3.up, shaft, false);
-            arrowMesh.MarkDynamic();
-            originalArrowVertices = arrowMesh.vertices;
+            arrowMeshes[0] = BuildBrushMesh("Painted Gizmo Arrow", arrowPaths, Vector3.up, shaft, false);
+            for (int i = 1; i < arrowMeshes.Length; i++)
+                arrowMeshes[i] = Instantiate(arrowMeshes[0]);
+            foreach (Mesh mesh in arrowMeshes)
+                mesh.MarkDynamic();
+            originalArrowVertices = arrowMeshes[0].vertices;
             animatedArrowVertices = new Vector3[originalArrowVertices.Length];
             drawnShaft = shaft;
             drawnHead = head;
             drawnHeadLength = arrowHeadLength;
         }
-        if (!ringMesh || brushChanged || ThicknessChanged(ring, drawnRing) || !Mathf.Approximately(ringRadius, drawnRadius) ||
+        if (!arcMeshes[0] || brushChanged || ThicknessChanged(ring, drawnRing) || !Mathf.Approximately(ringRadius, drawnRadius) ||
             ringSegments != drawnSegments || !Mathf.Approximately(arcDegrees, drawnArc))
         {
-            if (ringMesh)
-                Destroy(ringMesh);
+            DestroyRotationMeshes();
             ringPaths = BuildRingPaths(arcDegrees);
-            ringMesh = BuildBrushMesh("Painted Gizmo Arc", ringPaths, Vector3.forward, ring * .6f,
-                                      arcDegrees >= 360f);
-            if (fullRingMesh)
-                Destroy(fullRingMesh);
+            arcMeshes[0] = BuildBrushMesh("Painted Gizmo Arc", ringPaths, Vector3.forward, ring * .6f,
+                                          arcDegrees >= 360f);
+            for (int i = 1; i < arcMeshes.Length; i++)
+                arcMeshes[i] = Instantiate(arcMeshes[0]);
+            foreach (Mesh mesh in arcMeshes)
+                mesh.MarkDynamic();
             fullRingMesh = BuildBrushMesh("Painted Gizmo Ring", BuildRingPaths(360f),
                                           Vector3.forward, ring * .6f, true);
-            ringMesh.MarkDynamic();
-            originalArcVertices = ringMesh.vertices;
+            originalArcVertices = arcMeshes[0].vertices;
             animatedArcVertices = new Vector3[originalArcVertices.Length];
             fullRingMesh.MarkDynamic();
             originalRingVertices = fullRingMesh.vertices;
@@ -627,9 +743,7 @@ public sealed partial class ObjectGizmoController
         for (int i = 0; i < shaft.Length; i++)
         {
             float t = (float)i / (shaft.Length - 1);
-            float wave = (Mathf.Sin(t * 4f * Mathf.PI) + .28f * Mathf.Sin(t * 7f * Mathf.PI))
-                         * Mathf.Sin(t * Mathf.PI);
-            shaft[i] = new Vector3(brushWobble * wave, 0f, Mathf.Lerp(.04f, 1f, t));
+            shaft[i] = Vector3.forward * Mathf.Lerp(.04f, 1f, t);
         }
         shaft[shaft.Length - 1] = Vector3.forward;
         var paths = new List<Vector3[]> { shaft };
@@ -645,8 +759,7 @@ public sealed partial class ObjectGizmoController
         {
             float a = degrees * Mathf.Deg2Rad * i / segments;
             Vector3 radial = new(Mathf.Cos(a), Mathf.Sin(a), 0f);
-            float wave = .55f * Mathf.Sin(3f * a) + .25f * Mathf.Sin(7f * a + .4f);
-            arc[i] = radial * (ringRadius * (1f + brushWobble * wave));
+            arc[i] = radial * ringRadius;
         }
         if (degrees >= 360f)
         {

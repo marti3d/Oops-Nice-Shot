@@ -174,7 +174,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     private float ringHitRadiusPixels = 8;
 
     [Header("Painted Arrows and Arcs")]
-    [Tooltip("Amount of static waviness in the painted arrows and rotation arcs.")]
+    [Tooltip("Amount of painted waviness in hovered move arrows and rotation arcs.")]
     [SerializeField, Range(0f, .12f)]
     private float brushWobble = .045f;
     [Tooltip("How much the brushstroke thickness varies along each stroke.")]
@@ -185,10 +185,10 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     private float brushHoverTint = .4f;
 
     [Header("Move Arrow Animation")]
-    [Tooltip("Amount of sideways bend. Negative values bend in the opposite direction.")]
+    [Tooltip("Sideways bend at full hover. Negative values bend in the opposite direction.")]
     [SerializeField, Range(-.25f, .25f)]
     private float arrowCurvature = .065f;
-    [Tooltip("Turn the traveling wave on or off for move arrows.")]
+    [Tooltip("Enable the traveling wave when a move arrow is hovered or dragged.")]
     [InspectorName("Animate Move Arrows")]
     [SerializeField]
     private bool animateArrows = true;
@@ -201,12 +201,25 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [Tooltip("Number of waves along each move arrow.")]
     [SerializeField, Range(.5f, 4f)]
     private float arrowWaveCount = 1.5f;
+    [Tooltip("Time for the move arrow animation to ease in on hover, in seconds.")]
+    [SerializeField, Range(.01f, 1f)]
+    [InspectorName("Move Hover Fade In")]
+    private float arrowHoverTransition = .2f;
+    [Tooltip("Time for a move arrow to ease back to its resting shape, in seconds.")]
+    [SerializeField, Range(.01f, 2f)]
+    private float arrowHoverFadeOut = .25f;
+    [Tooltip("Transition easing. Zero is linear, one softens the start and end.")]
+    [SerializeField, Range(0f, 1f)]
+    private float arrowHoverEasing = 1f;
+    [Tooltip("How much wave speed, spacing, and strength vary. Zero gives a regular repeating wave.")]
+    [SerializeField, Range(0f, 1f)]
+    private float arrowWaveRandomness = .8f;
 
     [Header("Rotate Arrow Animation")]
-    [Tooltip("Amount of static inward and outward bend in the rotation stroke.")]
+    [Tooltip("Amount of inward and outward bend at full hover.")]
     [SerializeField, Range(-.25f, .25f)]
     private float rotateCurvature = .035f;
-    [Tooltip("Turn the traveling wave on or off for rotation handles.")]
+    [Tooltip("Enable the traveling wave when a rotation arc is hovered or dragged.")]
     [InspectorName("Animate Rotate Arcs")]
     [SerializeField]
     private bool animateRotationArrows = true;
@@ -219,6 +232,18 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [Tooltip("Number of waves per full revolution.")]
     [SerializeField, Range(1, 12)]
     private int rotateWaveCount = 5;
+    [Tooltip("Time for the rotation arc animation to ease in on hover, in seconds.")]
+    [SerializeField, Range(.01f, 2f)]
+    private float rotateHoverFadeIn = .2f;
+    [Tooltip("Time for a rotation arc to ease back to its resting shape, in seconds.")]
+    [SerializeField, Range(.01f, 2f)]
+    private float rotateHoverFadeOut = .25f;
+    [Tooltip("Transition easing. Zero is linear, one softens the start and end.")]
+    [SerializeField, Range(0f, 1f)]
+    private float rotateHoverEasing = 1f;
+    [Tooltip("How much rotation wave speed and strength vary. Zero gives a regular repeating wave.")]
+    [SerializeField, Range(0f, 1f)]
+    private float rotateWaveRandomness = .8f;
 
     [Header("Plane Handle Layout")]
     [Tooltip("Distance from the gizmo center to each tile along its two axes.")]
@@ -257,7 +282,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     private float planeFillOpacity = .36f;
 
     [Header("Plane Handle Animation")]
-    [Tooltip("Turn the traveling ripple on or off for all three plane tiles.")]
+    [Tooltip("Enable the traveling ripple when a plane tile is hovered or dragged.")]
     [InspectorName("Animate Plane Tiles")]
     [SerializeField]
     private bool animatePlaneHandles = true;
@@ -267,6 +292,18 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [Tooltip("Ripple cycles per second. Zero freezes the ripple in place.")]
     [SerializeField, Range(0f, 6f)]
     private float planeWaveSpeed = .85f;
+    [Tooltip("Time for the tile ripple to ease in on hover, in seconds.")]
+    [SerializeField, Range(.01f, 2f)]
+    private float planeHoverFadeIn = .2f;
+    [Tooltip("Time for a tile to ease back to its resting shape, in seconds.")]
+    [SerializeField, Range(.01f, 2f)]
+    private float planeHoverFadeOut = .25f;
+    [Tooltip("Transition easing. Zero is linear, one softens the start and end.")]
+    [SerializeField, Range(0f, 1f)]
+    private float planeHoverEasing = 1f;
+    [Tooltip("How much ripple speed and strength vary. Zero gives a regular repeating ripple.")]
+    [SerializeField, Range(0f, 1f)]
+    private float planeWaveRandomness = .8f;
 
     [Header("Adaptive Stroke Thickness")]
     [Tooltip("Thicken thin arrows and arcs on screen outside World Size mode.")]
@@ -404,7 +441,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         ConstantScreenSize,
         ConstantScreenSizePerObject
     }
-    private Mesh planeBorderMesh, fullRingMesh;
+    private Mesh fullRingMesh;
     private float drawnPlaneBorder;
     private Material planeBorderMaterial;
     private MaterialPropertyBlock planeBorderBlock;
@@ -412,7 +449,6 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     private readonly Color[] visualColors = new Color[9];
     private readonly float[] visualAlpha = new float[9];
     private readonly float[] visualScale = new float[9];
-    private Mesh planeMesh;
     private Vector3 planeU, planeV, planeGrab, planeTarget, planeApplied;
     private Quaternion dragFrame;
     private float drawnArc = -1;
@@ -456,6 +492,9 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     public Rigidbody SelectedObject => selected;
     public Transform PreviewTransform => ghost ? ghost.Root : null;
     public bool PreviewValid { get; private set; }
+    public bool IsRotationTool => rotationTool;
+    public bool IsLocalSpace => localSpace;
+    public bool IsOverForbiddenSurface => overForbiddenSurface;
 
     private GhostPreview ghost;
     private float rejectedUntil;
@@ -484,7 +523,6 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         public RigidbodyInterpolation interpolation;
     }
     private Collider[] shapes;
-    private Mesh arrowMesh, ringMesh;
     private float drawnShaft = -1, drawnHead = -1, drawnRing = -1;
     private float drawnHeadLength = -1, drawnRadius = -1;
     private int drawnSegments = -1;
@@ -528,12 +566,6 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         }
         for (int i = 0; i < 9; i++)
             materials[i] = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-        planeMesh = new Mesh { name = "GizmoPlane" };
-        planeMesh.vertices = new[] { Vector3.zero, Vector3.right, Vector3.up, Vector3.right + Vector3.up };
-        planeMesh.triangles = new[] { 0, 1, 2, 2, 1, 3, 2, 1, 0, 3, 1, 2 };
-        planeMesh.RecalculateBounds();
-        planeBorderMesh = BuildPlaneBorder();
-        drawnPlaneBorder = planeBorder;
         planeBorderMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
         for (int i = 0; i < 9; i++)
         {
@@ -572,21 +604,51 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         foreach (var m in materials)
             if (m)
                 Destroy(m);
-        if (arrowMesh)
-            Destroy(arrowMesh);
-        if (ringMesh)
-            Destroy(ringMesh);
-        if (planeMesh)
-            Destroy(planeMesh);
-        if (planeBorderMesh)
-            Destroy(planeBorderMesh);
-        if (fullRingMesh)
-            Destroy(fullRingMesh);
+        DestroyArrowMeshes();
+        DestroyRotationMeshes();
+        DestroyPlaneMeshes();
         if (planeBorderMaterial)
             Destroy(planeBorderMaterial);
     }
+    public void ToggleAxisSpace()
+    {
+        if (!isActiveAndEnabled || Time.timeScale == 0f || drag >= 0)
+            return;
+
+        localSpace = !localSpace;
+        hover = -1;
+    }
+
+    public void UseMoveTool() => SetRotationTool(false);
+
+    public void UseRotateTool() => SetRotationTool(true);
+
+    private void SetRotationTool(bool rotate)
+    {
+        if (!isActiveAndEnabled || Time.timeScale == 0f || drag >= 0)
+            return;
+
+        rotationTool = rotate;
+        hover = -1;
+    }
+
+    public void RequestPlacement()
+    {
+        if (isActiveAndEnabled && Time.timeScale > 0f && selected && ghost)
+            confirmRequested = true;
+    }
+
+    public void CancelPlacement()
+    {
+        if (isActiveAndEnabled && Time.timeScale > 0f)
+            ClearSelection();
+    }
+
     private void Update()
     {
+        if (Time.timeScale == 0f)
+            return;
+
         if (!selected && (drag >= 0 || outlines.Count > 0))
             ClearSelection();
         if (selected && !selected.gameObject.activeInHierarchy)
@@ -596,30 +658,26 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         if (keyboard != null && drag < 0)
         {
             if (moveKey != Key.None && keyboard[moveKey].wasPressedThisFrame)
-            {
-                rotationTool = false;
-                hover = -1;
-            }
+                UseMoveTool();
             if (rotateKey != Key.None && keyboard[rotateKey].wasPressedThisFrame)
-            {
-                rotationTool = true;
-                hover = -1;
-            }
+                UseRotateTool();
             if (spaceKey != Key.None && keyboard[spaceKey].wasPressedThisFrame)
-            {
-                localSpace = !localSpace;
-                hover = -1;
-            }
+                ToggleAxisSpace();
         }
-        if (selected && Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (selected && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
         {
-            confirmRequested = true;
+            RequestPlacement();
             return;
         }
         var mouse = Mouse.current;
-        if (mouse == null || (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame))
+        if (mouse == null)
         {
             ClearSelection();
+            return;
+        }
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+        {
+            CancelPlacement();
             return;
         }
         Vector2 pos = mouse.position.ReadValue();
@@ -814,7 +872,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         GroundHit = hit;
         PreviewValid = probe.CanPlace(selected, shapes, ghost.Root.position, ghost.Root.rotation,
                                       obstacleLayers, collisionClearance);
-        if (confirmRequested)
+        if (confirmRequested && Time.timeScale > 0f)
         {
             confirmRequested = false;
             Confirm();
