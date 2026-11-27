@@ -4,15 +4,15 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class PixelationController : MonoBehaviour
 {
-    [Header("Material")]
+    [MiniGolfFoldout("Material")]
     [SerializeField]
     private Material postProcessMaterial;
 
-    [Header("Resolution / Pixelation")]
+    [MiniGolfFoldout("Resolution / Pixelation")]
     [Range(90, 1080)]
     public int targetHeight = 240;
 
-    [Header("Color Style")]
+    [MiniGolfFoldout("Color Style")]
     [Range(0f, 2f)]
     public float saturation = 1.15f;
 
@@ -22,14 +22,14 @@ public class PixelationController : MonoBehaviour
     [Range(-0.5f, 0.5f)]
     public float brightness = 0.02f;
 
-    [Header("Retro Look")]
+    [MiniGolfFoldout("Retro Look")]
     [Range(2, 64)]
     public int colorSteps = 16;
 
     [Range(0f, 1f)]
     public float ditherStrength = 0.12f;
 
-    [Header("Update")]
+    [MiniGolfFoldout("Update")]
     public bool updateEveryFrame = true;
 
     private static readonly int TargetHeight =

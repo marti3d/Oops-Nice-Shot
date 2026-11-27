@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(100)]
 public sealed partial class ObjectGizmoController : MonoBehaviour
 {
-    [Header("Scene References")]
+    [MiniGolfFoldout("Scene References")]
     [Tooltip("Camera used to draw the gizmo and read pointer positions. Uses Main Camera if left blank.")]
     [SerializeField]
     private Camera targetCamera;
@@ -20,7 +20,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private Material outlineMaterial;
 
-    [Header("Object Selection")]
+    [MiniGolfFoldout("Object Selection")]
     [Tooltip("Layers containing rigidbodies that can be selected.")]
     [SerializeField]
     private LayerMask selectableLayers = ~0;
@@ -28,17 +28,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private LayerMask selectionRayLayers = Physics.DefaultRaycastLayers;
 
-    [Header("Shortcuts and Starting Mode")]
-    [Tooltip("Key that switches to Move mode.")]
-    [SerializeField]
-    private Key moveKey = Key.Q;
-    [Tooltip("Key that switches to Rotate mode.")]
-    [SerializeField]
-    private Key rotateKey = Key.W;
-    [Tooltip("Key that switches between world and local axes.")]
-    [InspectorName("Toggle Local / World Key")]
-    [SerializeField]
-    private Key spaceKey = Key.E;
+    [MiniGolfFoldout("Starting Mode")]
     [Tooltip("Start in Rotate mode when checked. Otherwise start in Move mode.")]
     [InspectorName("Start in Rotate Mode")]
     [SerializeField]
@@ -48,7 +38,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private bool localSpace;
 
-    [Header("Gizmo Size")]
+    [MiniGolfFoldout("Gizmo Size")]
     [Tooltip("Choose world units, adaptive sizing, or a fixed screen size with optional object scaling.")]
     [SerializeField]
     private GizmoSizeMode sizeMode = GizmoSizeMode.Adaptive;
@@ -83,7 +73,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float referenceObjectSize = 1;
 
-    [Header("Handle Colors and Feedback")]
+    [MiniGolfFoldout("Handle Colors and Feedback")]
     [Tooltip("Color of the X-axis handles and the YZ plane.")]
     [SerializeField]
     private Color xColor = new(.94f, .47f, .47f);
@@ -120,7 +110,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float hoverScale = 1.1f;
 
-    [Header("Move Arrows")]
+    [MiniGolfFoldout("Move Arrows")]
     [Tooltip("Show the arrows and plane handles in Move mode.")]
     [SerializeField]
     private bool showMove = true;
@@ -145,7 +135,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float arrowHitRadiusPixels = 10;
 
-    [Header("Rotation Arcs")]
+    [MiniGolfFoldout("Rotation Arcs")]
     [Tooltip("Show the rotation handles in Rotate mode.")]
     [SerializeField]
     private bool showRotate = true;
@@ -173,7 +163,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float ringHitRadiusPixels = 8;
 
-    [Header("Painted Arrows and Arcs")]
+    [MiniGolfFoldout("Painted Arrows and Arcs")]
     [Tooltip("Amount of painted waviness in hovered move arrows and rotation arcs.")]
     [SerializeField, Range(0f, .12f)]
     private float brushWobble = .045f;
@@ -184,7 +174,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField, Range(0f, 1f)]
     private float brushHoverTint = .4f;
 
-    [Header("Move Arrow Animation")]
+    [MiniGolfFoldout("Move Arrow Animation")]
     [Tooltip("Sideways bend at full hover. Negative values bend in the opposite direction.")]
     [SerializeField, Range(-.25f, .25f)]
     private float arrowCurvature = .065f;
@@ -215,7 +205,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField, Range(0f, 1f)]
     private float arrowWaveRandomness = .8f;
 
-    [Header("Rotate Arrow Animation")]
+    [MiniGolfFoldout("Rotate Arrow Animation")]
     [Tooltip("Amount of inward and outward bend at full hover.")]
     [SerializeField, Range(-.25f, .25f)]
     private float rotateCurvature = .035f;
@@ -245,7 +235,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField, Range(0f, 1f)]
     private float rotateWaveRandomness = .8f;
 
-    [Header("Plane Handle Layout")]
+    [MiniGolfFoldout("Plane Handle Layout")]
     [Tooltip("Distance from the gizmo center to each tile along its two axes.")]
     [Range(.05f, .5f)]
     [SerializeField]
@@ -262,7 +252,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private bool facePlanesTowardsCamera = true;
 
-    [Header("Painted Plane Handles")]
+    [MiniGolfFoldout("Painted Plane Handles")]
     [Tooltip("How rounded the corners of the plane tiles are.")]
     [SerializeField, Range(.02f, .45f)]
     private float planeCornerRoundness = .23f;
@@ -281,7 +271,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField, Range(0f, 1f)]
     private float planeFillOpacity = .36f;
 
-    [Header("Plane Handle Animation")]
+    [MiniGolfFoldout("Plane Handle Animation")]
     [Tooltip("Enable the traveling ripple when a plane tile is hovered or dragged.")]
     [InspectorName("Animate Plane Tiles")]
     [SerializeField]
@@ -305,7 +295,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField, Range(0f, 1f)]
     private float planeWaveRandomness = .8f;
 
-    [Header("Adaptive Stroke Thickness")]
+    [MiniGolfFoldout("Adaptive Stroke Thickness")]
     [Tooltip("Thicken thin arrows and arcs on screen outside World Size mode.")]
     [SerializeField]
     private bool adaptiveGizmoThickness = true;
@@ -326,7 +316,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float maximumThicknessMultiplier = 10f;
 
-    [Header("Dragging and Snapping")]
+    [MiniGolfFoldout("Dragging")]
     [Tooltip("Maximum speed at which the preview follows a move drag, in world units per second.")]
     [Min(.01f)]
     [SerializeField]
@@ -339,16 +329,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [Min(.01f)]
     [SerializeField]
     private float rotationSensitivity = 1;
-    [Tooltip("Move step in world units while Shift is held.")]
-    [Min(.001f)]
-    [SerializeField]
-    private float moveSnap = .5f;
-    [Tooltip("Rotation step in degrees while Shift is held.")]
-    [Min(.001f)]
-    [SerializeField]
-    private float rotationSnap = 15;
-
-    [Header("On-Screen Readout")]
+    [MiniGolfFoldout("On-Screen Readout")]
     [Tooltip("Show the text readout next to the gizmo.")]
     [SerializeField]
     private bool showReadout = true;
@@ -364,11 +345,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [Tooltip("Show the angle while dragging a rotation handle.")]
     [SerializeField]
     private bool showRotationAngle = true;
-    [Tooltip("Show a SNAP label while Shift is held.")]
-    [SerializeField]
-    private bool showSnapIndicator = true;
-
-    [Header("Pickup Lift")]
+    [MiniGolfFoldout("Pickup Lift")]
     [Tooltip("How far the preview lifts after selection. Zero disables the lift.")]
     [Min(0f)]
     [SerializeField]
@@ -378,7 +355,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float pickupLiftDuration = 0.25f;
 
-    [Header("Placement Rules")]
+    [MiniGolfFoldout("Placement Rules")]
     [Tooltip("Layers checked for obstacles that block placement.")]
     [SerializeField]
     private LayerMask obstacleLayers = ~0;
@@ -397,7 +374,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float groundDistance = 100f;
 
-    [Header("Ghost Preview")]
+    [MiniGolfFoldout("Ghost Preview")]
     [Tooltip("Shader used to draw the placement preview.")]
     [SerializeField]
     private Shader ghostShader;
@@ -423,7 +400,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [SerializeField]
     private float rejectShake = .06f;
 
-    [Header("Confirmed Placement")]
+    [MiniGolfFoldout("Confirmed Placement")]
     [Tooltip("Target speed for moving the original object to the confirmed preview.")]
     [Min(.01f)]
     [SerializeField]
@@ -489,12 +466,27 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     private Camera cam;
     private Material outlineMask, outlineOverlay;
     private Rigidbody selected;
+    public Camera ViewCamera => cam;
     public Rigidbody SelectedObject => selected;
     public Transform PreviewTransform => ghost ? ghost.Root : null;
     public bool PreviewValid { get; private set; }
     public bool IsRotationTool => rotationTool;
     public bool IsLocalSpace => localSpace;
     public bool IsOverForbiddenSurface => overForbiddenSurface;
+
+    private bool paused;
+
+    public void SetPaused(bool value)
+    {
+        paused = value;
+        if (!value)
+            return;
+
+        EndDrag();
+        confirmRequested = false;
+        remainingLift = 0f;
+        hover = -1;
+    }
 
     private GhostPreview ghost;
     private float rejectedUntil;
@@ -527,14 +519,12 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     private float drawnHeadLength = -1, drawnRadius = -1;
     private int drawnSegments = -1;
     private int hover = -1, drag = -1;
-    private bool savedGravity, savedCameraInput;
+    private bool savedGravity;
     private CollisionDetectionMode savedCcd;
     private RigidbodyInterpolation savedInterpolation;
     private Vector3 origin, axis, startPosition, lastRadial;
     private Quaternion startRotation;
     private float grab, angle, target, applied;
-    private bool Snap => Keyboard.current != null && (Keyboard.current.leftShiftKey.isPressed ||
-                                                      Keyboard.current.rightShiftKey.isPressed);
     private void Reset()
     {
         targetCamera = Camera.main;
@@ -589,7 +579,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     }
     private void OnApplicationFocus(bool focus)
     {
-        if (!focus)
+        if (!focus && !paused)
             ClearSelection();
     }
     private void OnDestroy()
@@ -612,7 +602,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     }
     public void ToggleAxisSpace()
     {
-        if (!isActiveAndEnabled || Time.timeScale == 0f || drag >= 0)
+        if (!isActiveAndEnabled || paused || Time.timeScale == 0f || drag >= 0)
             return;
 
         localSpace = !localSpace;
@@ -625,7 +615,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
 
     private void SetRotationTool(bool rotate)
     {
-        if (!isActiveAndEnabled || Time.timeScale == 0f || drag >= 0)
+        if (!isActiveAndEnabled || paused || Time.timeScale == 0f || drag >= 0)
             return;
 
         rotationTool = rotate;
@@ -634,19 +624,19 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
 
     public void RequestPlacement()
     {
-        if (isActiveAndEnabled && Time.timeScale > 0f && selected && ghost)
+        if (isActiveAndEnabled && !paused && Time.timeScale > 0f && selected && ghost)
             confirmRequested = true;
     }
 
     public void CancelPlacement()
     {
-        if (isActiveAndEnabled && Time.timeScale > 0f)
+        if (isActiveAndEnabled && !paused && Time.timeScale > 0f)
             ClearSelection();
     }
 
     private void Update()
     {
-        if (Time.timeScale == 0f)
+        if (paused || Time.timeScale == 0f)
             return;
 
         if (!selected && (drag >= 0 || outlines.Count > 0))
@@ -654,30 +644,10 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         if (selected && !selected.gameObject.activeInHierarchy)
             ClearSelection();
         UpdateTransfers();
-        var keyboard = Keyboard.current;
-        if (keyboard != null && drag < 0)
-        {
-            if (moveKey != Key.None && keyboard[moveKey].wasPressedThisFrame)
-                UseMoveTool();
-            if (rotateKey != Key.None && keyboard[rotateKey].wasPressedThisFrame)
-                UseRotateTool();
-            if (spaceKey != Key.None && keyboard[spaceKey].wasPressedThisFrame)
-                ToggleAxisSpace();
-        }
-        if (selected && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
-        {
-            RequestPlacement();
-            return;
-        }
         var mouse = Mouse.current;
         if (mouse == null)
         {
             ClearSelection();
-            return;
-        }
-        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
-        {
-            CancelPlacement();
             return;
         }
         Vector2 pos = mouse.position.ReadValue();
@@ -698,7 +668,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
                 BeginDrag(hover, pos);
                 return;
             }
-            // Keep the current preview when clicking outside; Escape cancels.
+            // Keep the current preview when clicking outside. Use the Cancel button to cancel.
             if (Physics.Raycast(cam.ScreenPointToRay(pos), out var hit, Mathf.Infinity, selectionRayLayers,
                                 QueryTriggerInteraction.Ignore) &&
                 hit.rigidbody &&
@@ -860,6 +830,11 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     {
         if (!selected || !ghost)
             return;
+        if (paused || Time.timeScale == 0f)
+        {
+            DrawHandlesAndOutline();
+            return;
+        }
         if (drag < 0)
             UpdatePickupLift();
         else

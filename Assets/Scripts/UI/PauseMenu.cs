@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public sealed class PauseMenu : MonoBehaviour
 {
@@ -8,14 +9,24 @@ public sealed class PauseMenu : MonoBehaviour
     [Tooltip("Optional camera controller. Camera input is suspended while the panel is open.")]
     [SerializeField] private CameraController cameraController;
 
+    [Tooltip("The scene's Object Gizmo Controller, on Main Camera.")]
+    [SerializeField] private ObjectGizmoController gizmoController;
+
     private bool paused;
     private float previousTimeScale;
-    private bool previousCameraInput;
+
 
     private void Awake()
     {
         if (pausePanel)
             pausePanel.SetActive(false);
+    }
+
+    private void Update()
+    {
+        if (!paused && Keyboard.current != null &&
+            Keyboard.current.escapeKey.wasPressedThisFrame)
+            Open();
     }
 
     public void Open()
@@ -25,10 +36,9 @@ public sealed class PauseMenu : MonoBehaviour
 
         previousTimeScale = Time.timeScale;
         if (cameraController)
-        {
-            previousCameraInput = cameraController.InputEnabled;
-            cameraController.InputEnabled = false;
-        }
+            cameraController.SetPauseInputBlocked(true);
+        if (gizmoController)
+            gizmoController.SetPaused(true);
 
         paused = true;
         Time.timeScale = 0f;
@@ -72,8 +82,10 @@ public sealed class PauseMenu : MonoBehaviour
     {
         paused = false;
         Time.timeScale = previousTimeScale;
+        if (gizmoController)
+            gizmoController.SetPaused(false);
         if (cameraController)
-            cameraController.InputEnabled = previousCameraInput;
+            cameraController.SetPauseInputBlocked(false);
     }
 }
 

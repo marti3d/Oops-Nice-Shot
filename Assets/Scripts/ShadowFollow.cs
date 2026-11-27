@@ -6,12 +6,12 @@ using UnityEngine.Rendering.Universal;
 [DefaultExecutionOrder(102)]
 public class ShadowFollow : MonoBehaviour
 {
-    [Header("Scene References")]
+    [MiniGolfFoldout("Scene References")]
     [Tooltip("Controller that supplies the ghost preview and ground hit. If empty, finds one in the scene.")]
     [SerializeField]
     private ObjectGizmoController gizmoController;
 
-    [Header("Surface Projection")]
+    [MiniGolfFoldout("Surface Projection")]
     [Tooltip("Depth of the decal projector. At runtime it is clamped between 0.001 and 0.05 world units.")]
     [Min(.001f)]
     [SerializeField]
@@ -20,7 +20,7 @@ public class ShadowFollow : MonoBehaviour
     [SerializeField]
     private float verticalOffset = 0f;
 
-    [Header("Shadow Footprint")]
+    [MiniGolfFoldout("Shadow Footprint")]
     [Tooltip("Scale the shadow relative to the ghost's projected footprint.")]
     [SerializeField]
     private float sizeMultiplier = 1.15f;

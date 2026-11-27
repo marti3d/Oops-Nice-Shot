@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public sealed partial class ObjectGizmoController
 {
@@ -566,8 +565,6 @@ public sealed partial class ObjectGizmoController
             label += "  " + (drag >= 6 ? planeApplied.magnitude.ToString("F2") + " m"
                              : drag < 3 ? applied.ToString("+0.00;-0.00;0.00") + " m"
                                         : applied.ToString("F1") + "°");
-        if (Snap && showSnapIndicator)
-            label += "  SNAP";
         GUI.Label(new Rect(p.x - 100, Screen.height - p.y + 25, 260, 25), label);
     }
     private bool AxisParam(Vector2 mouse, out float s)
@@ -616,10 +613,7 @@ public sealed partial class ObjectGizmoController
         drag = handle;
         target = applied = angle = 0;
         if (cameraController)
-        {
-            savedCameraInput = cameraController.InputEnabled;
-            cameraController.InputEnabled = false;
-        }
+            cameraController.SetDragInputBlocked(true);
     }
     private void UpdateTarget(Vector2 mouse)
     {
@@ -629,11 +623,6 @@ public sealed partial class ObjectGizmoController
                 return;
             Vector3 d = point - planeGrab;
             float u = Vector3.Dot(d, planeU), v = Vector3.Dot(d, planeV);
-            if (Snap)
-            {
-                u = Mathf.Round(u / moveSnap) * moveSnap;
-                v = Mathf.Round(v / moveSnap) * moveSnap;
-            }
             planeTarget = planeU * u + planeV * v;
             return;
         }
@@ -642,8 +631,6 @@ public sealed partial class ObjectGizmoController
             if (!AxisParam(mouse, out float s))
                 return;
             target = s - grab;
-            if (Snap)
-                target = Mathf.Round(target / moveSnap) * moveSnap;
         }
         else
         {
@@ -651,13 +638,13 @@ public sealed partial class ObjectGizmoController
                 return;
             angle += Vector3.SignedAngle(lastRadial, r, axis) * rotationSensitivity;
             lastRadial = r;
-            target = Snap ? Mathf.Round(angle / rotationSnap) * rotationSnap : angle;
+            target = angle;
         }
     }
     private void EndDrag()
     {
         if (drag >= 0 && cameraController)
-            cameraController.InputEnabled = savedCameraInput;
+            cameraController.SetDragInputBlocked(false);
         drag = -1;
     }
     // Convert desired screen pixels to world units using the actual camera projection.

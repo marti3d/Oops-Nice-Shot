@@ -4,7 +4,7 @@ using UnityEngine;
 [RequireComponent(typeof(LineRenderer))]
 public sealed class GhostGroundLine : MonoBehaviour
 {
-    [Header("Scene References")]
+    [MiniGolfFoldout("Scene References")]
     [Tooltip("Controller that supplies the preview and ground hit. If empty, finds one in the scene.")]
     [SerializeField]
     private ObjectGizmoController gizmoController;
@@ -12,7 +12,7 @@ public sealed class GhostGroundLine : MonoBehaviour
     [SerializeField]
     private Camera targetCamera;
 
-    [Header("Line Appearance")]
+    [MiniGolfFoldout("Line Appearance")]
     [Tooltip("Material used to render the line from the ghost to the ground.")]
     [SerializeField]
     private Material lineMaterial;
@@ -33,9 +33,14 @@ public sealed class GhostGroundLine : MonoBehaviour
 
     [Tooltip("Draw the guide over terrain, the original object, and other scene geometry.")]
     [SerializeField]
-    private bool alwaysVisible = true;
+    private bool alwaysVisible = false;
 
-    [Header("Line Width")]
+    [Tooltip("Opacity multiplier behind scene objects when Always Visible is off. Matches the placement indicator at 0.1.")]
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float occludedOpacity = .1f;
+
+    [MiniGolfFoldout("Line Width")]
     [Tooltip("Base line width in world units.")]
     [Min(.001f)]
     [SerializeField]
@@ -48,7 +53,7 @@ public sealed class GhostGroundLine : MonoBehaviour
     [SerializeField]
     private float minimumPixels = 2;
 
-    [Header("Dash Pattern")]
+    [MiniGolfFoldout("Dash Pattern")]
     [Tooltip("Create a repeating dash pattern when the component starts.")]
     [SerializeField]
     private bool dashed = true;
@@ -139,6 +144,8 @@ public sealed class GhostGroundLine : MonoBehaviour
     {
         if (hasOverlayShader)
         {
+            if (runtimeMaterial.HasProperty("_OccludedOpacity"))
+                runtimeMaterial.SetFloat("_OccludedOpacity", occludedOpacity);
             runtimeMaterial.SetFloat("_DepthTest", alwaysVisible
                 ? (float)UnityEngine.Rendering.CompareFunction.Always
                 : (float)UnityEngine.Rendering.CompareFunction.LessEqual);

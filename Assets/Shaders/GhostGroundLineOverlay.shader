@@ -3,57 +3,82 @@ Shader "Gizmo/Ghost Ground Line Overlay"
     Properties
     {
         _BaseMap ("Dash Pattern", 2D) = "white" {}
-        [Enum(UnityEngine.Rendering.CompareFunction)] _DepthTest ("Depth Test", Float) = 8
+        [Enum(UnityEngine.Rendering.CompareFunction)] _DepthTest ("Depth Test", Float) = 4
+        _OccludedOpacity ("Occluded Opacity Multiplier", Range(0, 1)) = 0.1
     }
 
     SubShader
     {
-        Tags { "Queue" = "Overlay" "RenderType" = "Transparent" }
+        Tags
+        {
+            "RenderPipeline" = "UniversalPipeline"
+            "Queue" = "Overlay"
+            "RenderType" = "Transparent"
+        }
 
         Pass
         {
             Tags { "LightMode" = "SRPDefaultUnlit" }
             Cull Off
             ZWrite Off
-            ZTest [_DepthTest]
+            ZTest Always
             Blend SrcAlpha OneMinusSrcAlpha
 
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #include "UnityCG.cginc"
+            HLSLPROGRAM
+            #pragma vertex Vert
+            #pragma fragment Frag
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
-            sampler2D _BaseMap;
-            float4 _BaseMap_ST;
+            TEXTURE2D(_BaseMap);
+            SAMPLER(sampler_BaseMap);
 
-            struct Vertex
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST;
+                float _DepthTest;
+                float _OccludedOpacity;
+            CBUFFER_END
+
+            struct Attributes
             {
-                float4 position : POSITION;
+                float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
-                fixed4 color : COLOR;
+                half4 color : COLOR;
             };
 
-            struct Fragment
+            struct Varyings
             {
-                float4 position : SV_POSITION;
+                float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                fixed4 color : COLOR;
+                half4 color : COLOR;
             };
 
-            Fragment vert(Vertex input)
+            Varyings Vert(Attributes input)
             {
-                Fragment output;
-                output.position = UnityObjectToClipPos(input.position);
+                Varyings output;
+                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 output.color = input.color;
                 return output;
             }
 
-            fixed4 frag(Fragment input) : SV_Target
+            half4 Frag(Varyings input) : SV_Target
             {
-                return input.color * tex2D(_BaseMap, input.uv);
+                half4 color = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * input.color;
+                float2 screenUV = GetNormalizedScreenSpaceUV(input.positionCS);
+                float sceneDepth = SampleSceneDepth(screenUV);
+                #if UNITY_REVERSED_Z
+                    bool occluded = input.positionCS.z < sceneDepth - 0.000001;
+                #else
+                    bool occluded = input.positionCS.z > sceneDepth + 0.000001;
+                #endif
+
+                // Match PlacementIndicator: Always bypasses fading, other modes fade covered pixels.
+                float visibility = (occluded && _DepthTest < 7.5) ? _OccludedOpacity : 1.0;
+                color.a *= visibility;
+                return color;
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }

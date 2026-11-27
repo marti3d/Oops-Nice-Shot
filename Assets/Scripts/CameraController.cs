@@ -16,7 +16,7 @@ public sealed class CameraController : MonoBehaviour
 {
     public enum ProjectionMode { Perspective, Orthographic }
 
-    [Header("Scene References")]
+    [MiniGolfFoldout("Scene References")]
     [Tooltip("Optional. Camera starts focused here. Its Y also defines the horizontal navigation plane.")]
     [SerializeField] private Transform islandCenter;
 
@@ -24,11 +24,11 @@ public sealed class CameraController : MonoBehaviour
              "Its vertical range should include the navigation plane height.")]
     [SerializeField] private Collider movementBounds;
 
-    [Header("Projection Mode")]
+    [MiniGolfFoldout("Projection Mode")]
     [Tooltip("Choose Perspective for depth scaling or Orthographic for a parallel view.")]
     [SerializeField] private ProjectionMode projectionMode = ProjectionMode.Perspective;
 
-    [Header("Camera Framing")]
+    [MiniGolfFoldout("Camera Framing")]
     [Min(0.1f)]
     [Tooltip("Physical distance from the camera to its focus point. Does not change while zooming.")]
     [SerializeField] private float cameraDistance = 250f;
@@ -37,14 +37,14 @@ public sealed class CameraController : MonoBehaviour
     [Tooltip("Starting downward tilt in degrees, clamped to the orbit pitch limits.")]
     [Range(1f, 89f)][SerializeField] private float initialPitch = 45f;
 
-    [Header("Panning (Middle Mouse)")]
+    [MiniGolfFoldout("Panning (Middle Mouse)")]
     [Tooltip("Multiplier for how far the camera pans during a middle-mouse drag.")]
     [Min(0.01f)][SerializeField] private float panSensitivity = 1f;
     [Min(0f)]
     [Tooltip("Seconds. 0 = exact tracking.")]
     [SerializeField] private float panSmoothTime = 0.06f;
 
-    [Header("Orbiting (Right Mouse)")]
+    [MiniGolfFoldout("Orbiting (Right Mouse)")]
     [Min(0.01f)]
     [Tooltip("Degrees per pixel.")]
     [SerializeField] private float rotationSensitivity = 0.2f;
@@ -55,7 +55,7 @@ public sealed class CameraController : MonoBehaviour
     [Tooltip("Steepest downward tilt allowed while orbiting, in degrees.")]
     [Range(1f, 89f)][SerializeField] private float maxPitch = 65f;
 
-    [Header("Soft Bounds (Rubber Band)")]
+    [MiniGolfFoldout("Soft Bounds (Rubber Band)")]
     [Range(0f, 0.5f)]
     [Tooltip("Maximum overshoot past the bounds as a fraction of the visible view height.")]
     [SerializeField] private float maxOvershoot = 0.1f;
@@ -63,7 +63,7 @@ public sealed class CameraController : MonoBehaviour
     [Tooltip("Seconds it takes to ease back inside after releasing the mouse.")]
     [SerializeField] private float boundsReturnSmoothTime = 0.18f;
 
-    [Header("Perspective Zoom")]
+    [MiniGolfFoldout("Perspective Zoom")]
     [Tooltip("Starting vertical field of view in Perspective mode, in degrees.")]
     [Range(0.1f, 179f)][SerializeField] private float initialFieldOfView = 8f;
     [Tooltip("Narrowest field of view in Perspective mode. This is the closest zoom.")]
@@ -71,7 +71,7 @@ public sealed class CameraController : MonoBehaviour
     [Tooltip("Widest field of view in Perspective mode. This is the farthest zoom.")]
     [Range(0.1f, 179f)][SerializeField] private float maxFieldOfView = 18f;
 
-    [Header("Orthographic Zoom")]
+    [MiniGolfFoldout("Orthographic Zoom")]
     [Tooltip("Starting half-height of the Orthographic view, in world units.")]
     [Min(0.01f)][SerializeField] private float initialOrthographicSize = 17.5f;
     [Tooltip("Smallest Orthographic half-height. This is the closest zoom.")]
@@ -79,7 +79,7 @@ public sealed class CameraController : MonoBehaviour
     [Tooltip("Largest Orthographic half-height. This is the farthest zoom.")]
     [Min(0.01f)][SerializeField] private float maxOrthographicSize = 40f;
 
-    [Header("Zoom Feel")]
+    [MiniGolfFoldout("Zoom Feel")]
     [Tooltip("How much one scroll notch changes the zoom.")]
     [Min(0.001f)][SerializeField] private float zoomSensitivity = 0.12f;
     [Tooltip("Time in seconds for zoom to settle. Zero responds immediately.")]
@@ -90,6 +90,23 @@ public sealed class CameraController : MonoBehaviour
 
     /// <summary>Other scripts (e.g. the object gizmo) can disable camera input while they use the mouse.</summary>
     public bool InputEnabled { get; set; } = true;
+
+    private bool pauseInputBlocked;
+    private bool dragInputBlocked;
+
+    public void SetPauseInputBlocked(bool blocked)
+    {
+        pauseInputBlocked = blocked;
+        if (blocked)
+            panActive = orbitActive = false;
+    }
+
+    public void SetDragInputBlocked(bool blocked)
+    {
+        dragInputBlocked = blocked;
+        if (blocked)
+            panActive = orbitActive = false;
+    }
 
     private Camera controlledCamera;
     private float groundY;
@@ -136,7 +153,7 @@ public sealed class CameraController : MonoBehaviour
 
         Vector2 mousePos = mouse.position.ReadValue();
 
-        if (!InputEnabled)
+        if (!InputEnabled || pauseInputBlocked || dragInputBlocked)
         {
             panActive = orbitActive = false;
             previousMouse = mousePos;

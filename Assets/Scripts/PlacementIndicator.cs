@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 [DefaultExecutionOrder(102)]
 public sealed class PlacementIndicator : MonoBehaviour
 {
-    [Header("Scene References")]
+    [MiniGolfFoldout("Scene References")]
     [Tooltip("Controller that supplies the preview and ground hit. If empty, finds one in the scene.")]
     [SerializeField]
     ObjectGizmoController gizmoController;
@@ -12,7 +12,7 @@ public sealed class PlacementIndicator : MonoBehaviour
     [SerializeField]
     Camera targetCamera;
 
-    [Header("Appearance")]
+    [MiniGolfFoldout("Appearance")]
     [Tooltip("Material used to render the ground marker.")]
     [SerializeField]
     Material indicatorMaterial;
@@ -23,7 +23,7 @@ public sealed class PlacementIndicator : MonoBehaviour
     [SerializeField]
     bool alwaysOnTop = false;
 
-    [Header("Surface Placement")]
+    [MiniGolfFoldout("Surface Placement")]
     [Tooltip("Tilt the marker to match the ground. Turn off to keep it horizontal.")]
     [SerializeField]
     bool alignToSurface = true;
@@ -32,7 +32,7 @@ public sealed class PlacementIndicator : MonoBehaviour
     [SerializeField]
     float surfaceOffset = .025f;
 
-    [Header("Indicator Size")]
+    [MiniGolfFoldout("Indicator Size")]
     [Tooltip("Size the marker in world units, from the selected object, or in screen pixels.")]
     [SerializeField]
     IndicatorSizeMode sizeMode = IndicatorSizeMode.FixedWorldSize;

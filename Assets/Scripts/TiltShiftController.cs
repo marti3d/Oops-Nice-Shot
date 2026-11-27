@@ -5,25 +5,25 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class TiltShiftController : MonoBehaviour
 {
-    [Header("Material")]
+    [MiniGolfFoldout("Material")]
     [SerializeField]
     private Material tiltShiftMaterial;
 
-    [Header("Focus")]
+    [MiniGolfFoldout("Focus")]
     [Range(0f, 1f)]
     public float focusPosition = 0.5f;
 
     [Range(0.01f, 1f)]
     public float focusWidth = 0.12f;
 
-    [Header("Blur")]
+    [MiniGolfFoldout("Blur")]
     [Range(0f, 10f)]
     public float blurStrength = 6f;
 
     [Range(0.001f, 0.5f)]
     public float transition = 0.35f;
 
-    [Header("Color")]
+    [MiniGolfFoldout("Color")]
     [Range(0f, 2f)]
     public float saturation = 1.15f;
 

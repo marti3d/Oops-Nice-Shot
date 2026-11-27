@@ -6,7 +6,7 @@ public sealed partial class ObjectGizmoController
 {
     private void Confirm()
     {
-        if (!ghost)
+        if (paused || Time.timeScale == 0f || !ghost)
             return;
         if (!HasGround || !PreviewValid)
         {
