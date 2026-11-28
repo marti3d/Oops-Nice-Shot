@@ -359,7 +359,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
     [Tooltip("Layers checked for obstacles that block placement.")]
     [SerializeField]
     private LayerMask obstacleLayers = ~0;
-    [Tooltip("Extra clearance required around the object during placement checks.")]
+    [Tooltip("Padding added to the broad-phase sphere used to find nearby obstacles.")]
     [Min(0)]
     [SerializeField]
     private float collisionClearance = .005f;
@@ -437,12 +437,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
                                        : gizmoWorldSize;
             if (sizeMode == GizmoSizeMode.WorldSize || !cam || !ghost || cam.pixelHeight <= 0)
                 return size;
-            float depth =
-                Mathf.Max(cam.nearClipPlane,
-                          Vector3.Dot(ghost.Root.position - cam.transform.position, cam.transform.forward));
-            float pixel = cam.orthographic ? 2 * cam.orthographicSize / cam.pixelHeight
-                                           : 2 * depth * Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad * .5f) /
-                                                 cam.pixelHeight;
+            float pixel = CameraController.WorldViewHeightAt(cam, ghost.Root.position) / cam.pixelHeight;
             if (sizeMode == GizmoSizeMode.ConstantScreenSize)
                 return constantScreenPixels * pixel;
             if (sizeMode == GizmoSizeMode.ConstantScreenSizePerObject)
@@ -639,9 +634,8 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         if (paused || Time.timeScale == 0f)
             return;
 
-        if (!selected && (drag >= 0 || outlines.Count > 0))
-            ClearSelection();
-        if (selected && !selected.gameObject.activeInHierarchy)
+        // A destroyed Unity object retains a managed reference until selection is cleared.
+        if (!ReferenceEquals(selected, null) && (!selected || !ghost || !selected.gameObject.activeInHierarchy))
             ClearSelection();
         UpdateTransfers();
         var mouse = Mouse.current;
@@ -711,7 +705,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
             return;
         foreach (MeshFilter f in ghost.Root.GetComponentsInChildren<MeshFilter>())
         {
-            if (f.sharedMesh == null || !f.TryGetComponent<MeshRenderer>(out var renderer))
+            if (f.sharedMesh == null || !f.TryGetComponent<MeshRenderer>(out _))
                 continue;
             if (!f.sharedMesh.isReadable)
             {
@@ -797,18 +791,11 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         if (ghost)
             Destroy(ghost.gameObject);
         ghost = null;
+        previewRenderers = null;
         remainingLift = 0f;
         selectedObjectSize = 1f;
         if (selected)
-        {
-            selected.isKinematic = false;
-            selected.collisionDetectionMode = savedCcd;
-            selected.interpolation = savedInterpolation;
-            selected.useGravity = savedGravity;
-            selected.linearVelocity = Vector3.zero;
-            selected.angularVelocity = Vector3.zero;
-            selected.WakeUp();
-        }
+            RestoreDynamicBody(selected, savedGravity, savedCcd, savedInterpolation);
         ReleaseSelectionOutlines();
         selected = null;
         shapes = null;
@@ -840,7 +827,7 @@ public sealed partial class ObjectGizmoController : MonoBehaviour
         else
             UpdateDrag();
         Physics.SyncTransforms();
-        PreviewBounds = PlacementProbe.Measure(previewRenderers, ghost.Root.position);
+        PreviewBounds = PlacementProbe.Measure(previewRenderers, ghost.Root.position, ghost.VisualOffset);
         HasGround = probe.FindGround(PreviewBounds, selected, groundLayers, forbiddenSurfaceLayers,
                                      groundDistance, out var start, out var hit, out overForbiddenSurface);
         GroundStart = start;

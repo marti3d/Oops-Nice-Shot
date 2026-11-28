@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public sealed partial class ObjectGizmoController
 {
@@ -32,6 +30,7 @@ public sealed partial class ObjectGizmoController
         ghost.SetAppearance(validColor, 0);
         transfers.Add(t);
         ghost = null;
+        previewRenderers = null;
         selected = null;
         shapes = null;
         remainingLift = 0;
@@ -71,8 +70,6 @@ public sealed partial class ObjectGizmoController
                 // Recheck destination, including other transfers which have already arrived.
                 if (!TransferDestinationClear(t))
                 {
-                    t.body.position = t.start.position;
-                    t.body.rotation = t.start.rotation;
                     FinishTransfer(t);
                     transfers.RemoveAt(i);
                     continue;
@@ -111,13 +108,18 @@ public sealed partial class ObjectGizmoController
             t.body.rotation = t.start.rotation;
         }
         t.body.detectCollisions = t.collisions;
-        t.body.isKinematic = false;
-        t.body.collisionDetectionMode = t.ccd;
-        t.body.interpolation = t.interpolation;
-        t.body.useGravity = t.gravity;
-        t.body.linearVelocity = Vector3.zero;
-        t.body.angularVelocity = Vector3.zero;
-        t.body.WakeUp();
+        RestoreDynamicBody(t.body, t.gravity, t.ccd, t.interpolation);
+    }
+    private static void RestoreDynamicBody(Rigidbody body, bool gravity, CollisionDetectionMode ccd,
+                                           RigidbodyInterpolation interpolation)
+    {
+        body.isKinematic = false;
+        body.collisionDetectionMode = ccd;
+        body.interpolation = interpolation;
+        body.useGravity = gravity;
+        body.linearVelocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
+        body.WakeUp();
     }
     public void RegisterSpawn(Rigidbody rb)
     {

@@ -128,11 +128,7 @@ public sealed class GhostGroundLine : MonoBehaviour
         var cam = targetCamera ? targetCamera : Camera.main;
         if (adaptiveWidth && cam && cam.pixelHeight > 0)
         {
-            float depth = Mathf.Max(cam.nearClipPlane,
-                                    Vector3.Dot(start - cam.transform.position, cam.transform.forward));
-            float units = cam.orthographic ? 2 * cam.orthographicSize / cam.pixelHeight
-                                           : 2 * depth * Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad * .5f) /
-                                                 cam.pixelHeight;
+            float units = CameraController.WorldViewHeightAt(cam, start) / cam.pixelHeight;
             w = Mathf.Max(w, units * minimumPixels);
         }
         line.widthMultiplier = 1f;

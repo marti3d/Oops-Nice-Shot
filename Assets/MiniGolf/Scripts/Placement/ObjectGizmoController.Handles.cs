@@ -659,14 +659,8 @@ public sealed partial class ObjectGizmoController
         if (adaptiveGizmoThickness && sizeMode != GizmoSizeMode.WorldSize && selected && cam &&
             cam.pixelHeight > 0)
         {
-            float depth =
-                Mathf.Max(cam.nearClipPlane, Vector3.Dot((ghost ? ghost.Root.position : selected.position) -
-                                                             cam.transform.position,
-                                                         cam.transform.forward));
-            float worldPerPixel =
-                cam.orthographic
-                    ? 2f * cam.orthographicSize / cam.pixelHeight
-                    : 2f * depth * Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad * .5f) / cam.pixelHeight;
+            Vector3 pivot = ghost ? ghost.Root.position : selected.position;
+            float worldPerPixel = CameraController.WorldViewHeightAt(cam, pivot) / cam.pixelHeight;
             float arrowScale = Mathf.Max(.0001f, EffectiveGizmoSize * arrowLength);
             float ringScale = Mathf.Max(.0001f, EffectiveGizmoSize);
             float cap = Mathf.Max(1f, maximumThicknessMultiplier);

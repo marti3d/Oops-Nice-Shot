@@ -5,6 +5,7 @@ using UnityEngine.Rendering;
 public sealed class GhostPreview : MonoBehaviour
 {
     public Transform Root => transform;
+    internal Vector3 VisualOffset => transform.TransformVector(visual.localPosition);
     private Transform visual;
     private readonly List<Material> materials = new();
     private readonly List<Mesh> baked = new();

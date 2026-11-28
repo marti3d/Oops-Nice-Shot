@@ -346,6 +346,14 @@ public sealed class CameraController : MonoBehaviour
         return raw;
     }
 
+    internal static float WorldViewHeightAt(Camera camera, Vector3 position)
+    {
+        float depth = Mathf.Max(camera.nearClipPlane,
+                                Vector3.Dot(position - camera.transform.position, camera.transform.forward));
+        return camera.orthographic ? 2f * camera.orthographicSize
+                                   : 2f * depth * Mathf.Tan(camera.fieldOfView * Mathf.Deg2Rad * .5f);
+    }
+
     // ---------- Zoom helpers ----------
 
     private float HalfHeightFromFov(float degrees) =>

@@ -123,14 +123,7 @@ public sealed class PlacementIndicator : MonoBehaviour
                 : Mathf.Max(.01f, indicatorSize);
         var cam = targetCamera ? targetCamera : Camera.main;
         if (sizeMode == IndicatorSizeMode.ConstantScreenSize && cam && cam.pixelHeight > 0)
-        {
-            float depth = Mathf.Max(cam.nearClipPlane,
-                                    Vector3.Dot(hit.point - cam.transform.position, cam.transform.forward));
-            size = screenPixels *
-                   (cam.orthographic ? 2f * cam.orthographicSize
-                                     : 2f * depth * Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad * .5f)) /
-                   cam.pixelHeight;
-        }
+            size = screenPixels * CameraController.WorldViewHeightAt(cam, hit.point) / cam.pixelHeight;
         Vector3 normal = alignToSurface ? hit.normal : Vector3.up;
         quad.transform.SetPositionAndRotation(hit.point + normal * surfaceOffset,
                                               Quaternion.FromToRotation(Vector3.forward, normal));

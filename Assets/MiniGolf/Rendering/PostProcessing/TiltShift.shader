@@ -74,9 +74,9 @@ Shader "Custom/TiltShift"
 
                 // Curva quintica:
                 // derivadas suaves en ambos extremos
-                float blurMask =
+                float blurMask = saturate(
                     t * t * t *
-                    (t * (t * 6.0 - 15.0) + 10.0);
+                    (t * (t * 6.0 - 15.0) + 10.0));
 
                 // ----------------------------------
                 // 3. RADIO DE BLUR PROGRESIVO

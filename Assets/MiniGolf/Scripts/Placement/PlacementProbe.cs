@@ -5,7 +5,7 @@ internal sealed class PlacementProbe
     private Collider[] overlaps = new Collider[16];
     private RaycastHit[] hits = new RaycastHit[16];
 
-    public static Bounds Measure(MeshRenderer[] renderers, Vector3 fallback)
+    public static Bounds Measure(MeshRenderer[] renderers, Vector3 fallback, Vector3 visualOffset)
     {
         Bounds bounds = new Bounds(fallback, Vector3.zero);
         bool found = false;
@@ -19,6 +19,8 @@ internal sealed class PlacementProbe
                 bounds = renderer.bounds;
             found = true;
         }
+        if (found)
+            bounds.center -= visualOffset;
         return bounds;
     }
 

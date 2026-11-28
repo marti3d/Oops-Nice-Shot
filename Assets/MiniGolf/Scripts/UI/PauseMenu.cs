@@ -43,12 +43,6 @@ public sealed class PauseMenu : MonoBehaviour
         paused = true;
         Time.timeScale = 0f;
         pausePanel.SetActive(true);
-#if UNITY_EDITOR
-        if (pausePanel)
-            Debug.Log($"Pause Menu opened '{pausePanel.name}' in scene '{pausePanel.scene.name}'. " +
-                      $"Active checkbox: {pausePanel.activeSelf}. Active in hierarchy: {pausePanel.activeInHierarchy}.",
-                      pausePanel);
-#endif
         RestoreIfPanelHidden();
     }
 
